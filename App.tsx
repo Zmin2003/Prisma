@@ -71,7 +71,7 @@ const App = () => {
     if (!wizardCompleted && !hasApiKey) {
       setShowWizard(true);
     }
-  }, []);
+  }, [config.customApiKey]);
 
   useEffect(() => {
     const unsubscribe = errorService.addListener((error, errorId) => {

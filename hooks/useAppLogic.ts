@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ModelOption, AppConfig, ChatMessage, MessageAttachment } from '../types';
 import { STORAGE_KEYS, DEFAULT_CONFIG, getValidThinkingLevels } from '../config';
 import { useDeepThink } from './useDeepThink';
@@ -131,7 +131,13 @@ export const useAppLogic = () => {
     }
   }, [currentSessionId, getSession]);
 
-  // Handle AI Completion
+  // Handle AI Completion - use ref to avoid dependency on messages
+  const messagesRef = useRef<ChatMessage[]>([]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
   useEffect(() => {
     if (appState === 'completed') {
       const duration = (processStartTime && processEndTime) ? (processEndTime - processStartTime) : undefined;
@@ -147,8 +153,8 @@ export const useAppLogic = () => {
         isThinking: false,
         totalDuration: duration
       };
-      
-      const newMessages = [...messages, finalizedMessage];
+
+      const newMessages = [...messagesRef.current, finalizedMessage];
       setMessages(newMessages);
 
       if (currentSessionId) {
@@ -161,7 +167,7 @@ export const useAppLogic = () => {
       // Refocus after completion
       setFocusTrigger(prev => prev + 1);
     }
-  }, [appState, finalOutput, managerAnalysis, experts, synthesisThoughts, resetDeepThink, processStartTime, processEndTime, currentSessionId, messages, selectedModel, createSession, updateSessionMessages]);
+  }, [appState, finalOutput, managerAnalysis, experts, synthesisThoughts, resetDeepThink, processStartTime, processEndTime, currentSessionId, selectedModel, createSession, updateSessionMessages]);
 
   const handleRun = useCallback((attachments: MessageAttachment[] = []) => {
     if (!query.trim() && attachments.length === 0) return;

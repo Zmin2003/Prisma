@@ -67,7 +67,7 @@ const SettingsModal = ({
             <Settings size={18} className="text-blue-600" />
             <h2 className="font-semibold text-slate-800">Configuration</h2>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors rounded-full p-1 hover:bg-slate-200/50">
+          <button onClick={handleClose} className="text-slate-400 hover:text-slate-700 transition-colors rounded-full p-1 hover:bg-slate-200/50">
             <X size={20} />
           </button>
         </div>

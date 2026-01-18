@@ -23,7 +23,9 @@ export const useChatSessions = () => {
 
   const createSession = useCallback((initialMessages: ChatMessage[], model: ModelOption) => {
     const newId = Date.now().toString();
-    const title = initialMessages[0].content.slice(0, 40) + (initialMessages[0].content.length > 40 ? '...' : '');
+    // Use Array.from to properly handle multi-byte characters (e.g., Chinese, emoji)
+    const contentChars = Array.from(initialMessages[0].content);
+    const title = contentChars.slice(0, 40).join('') + (contentChars.length > 40 ? '...' : '');
     
     const newSession: ChatSession = {
       id: newId,

@@ -25,7 +25,7 @@ const PROVIDER_BASE_URLS: Record<string, string> = {
 };
 
 // Check if we're in development mode
-const isDevelopment = import.meta.env?.MODE === 'development' || process.env.NODE_ENV === 'development';
+const isDevelopment = typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'development';
 
 // Store the current custom API target URL and Gemini proxy base URL
 let currentCustomApiUrl: string | null = null;
@@ -154,7 +154,7 @@ export const setGeminiProxyUrl = (baseUrl: string | null) => {
 
 export const getAI = (config?: AIProviderConfig) => {
   const provider = config?.provider || 'google';
-  const apiKey = config?.apiKey || import.meta.env?.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+  const apiKey = config?.apiKey || (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_GEMINI_API_KEY : undefined);
 
   if (provider === 'openai' || provider === 'deepseek' || provider === 'custom' || provider === 'anthropic' || provider === 'xai' || provider === 'mistral') {
     const options: any = {

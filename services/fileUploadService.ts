@@ -594,12 +594,11 @@ class FileUploadService {
 
   /**
    * Get supported file extensions for file input accept attribute
-   * Returns both extensions and MIME types for better browser compatibility
+   * Returns extensions only for better browser compatibility
    */
   getSupportedExtensions(): string {
     const extensions = Object.keys(EXTENSION_MIME_MAP);
-    const mimeTypes = [...new Set(Object.values(EXTENSION_MIME_MAP))];
-    return [...extensions, ...mimeTypes].join(',');
+    return extensions.join(',');
   }
 
   /**

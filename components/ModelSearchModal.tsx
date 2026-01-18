@@ -96,7 +96,7 @@ const ModelSearchModal: React.FC<ModelSearchModalProps> = ({
     if (isOpen) {
       performSearch();
     }
-  }, [isOpen, selectedProvider, selectedCategory, searchSource]);
+  }, [isOpen, selectedProvider, selectedCategory, searchSource, performSearch]);
 
   // Debounced search on query change
   useEffect(() => {
@@ -107,7 +107,7 @@ const ModelSearchModal: React.FC<ModelSearchModalProps> = ({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, isOpen, performSearch]);
 
   // Handle model selection
   const handleSelectModel = (model: ModelInfo) => {
