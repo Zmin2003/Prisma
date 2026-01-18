@@ -260,13 +260,6 @@ export function readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
   });
 }
 
-/**
- * Generate unique ID for attachment
- */
-function generateAttachmentId(): string {
-  return `att-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-}
-
 // ============================================================================
 // Small File Processing (Base64 Mode)
 // ============================================================================
