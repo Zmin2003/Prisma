@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppLogic } from './hooks/useAppLogic';
 import { useToast } from './hooks/useToast';
+import { useValidationError } from './hooks/useValidationError';
 import { errorService } from './services/errorService';
 
 import SettingsModal from './SettingsModal';
@@ -14,6 +15,7 @@ import ChatArea from './components/ChatArea';
 import ToastContainer from './components/ToastContainer';
 import ErrorBoundary from './components/ErrorBoundary';
 import ErrorPanel from './components/ErrorPanel';
+import ErrorCard from './components/ErrorCard';
 import { HistoryPanel } from './components/HistoryPanel';
 import { PerformancePanel } from './components/PerformancePanel';
 
@@ -56,6 +58,7 @@ const App = () => {
   } = useAppLogic();
 
   const { toasts, showError, removeToast, dismissToast } = useToast();
+  const { validationError, isErrorVisible, dismissError } = useValidationError();
 
   // Check if wizard should be shown on first launch
   useEffect(() => {
@@ -187,6 +190,20 @@ const App = () => {
             processStartTime={processStartTime}
             processEndTime={processEndTime}
           />
+
+          {/* Validation Error Card Overlay */}
+          {isErrorVisible && validationError && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+              <ErrorCard
+                error={validationError}
+                onClose={dismissError}
+                onOpenSettings={() => {
+                  dismissError();
+                  setIsSettingsOpen(true);
+                }}
+              />
+            </div>
+          )}
 
           <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none p-4 pb-6 flex justify-center bg-gradient-to-t from-white via-white/80 to-transparent">
             <div className="pointer-events-auto w-full max-w-4xl">

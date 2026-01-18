@@ -206,7 +206,18 @@ export const getAI = (config?: AIProviderConfig) => {
   }
 };
 
-export const getAIProvider = (model: string): ApiProvider => {
+export const getAIProvider = (model: string, customModels?: CustomModel[]): ApiProvider => {
+  // Priority 1: Check custom models array first
+  // This fixes the bug where custom models default to 'google' provider
+  if (customModels && customModels.length > 0) {
+    const customModel = findCustomModel(model, customModels);
+    if (customModel) {
+      logger.debug('API', 'Custom model provider resolved', { model, provider: customModel.provider });
+      return customModel.provider;
+    }
+  }
+
+  // Priority 2: Check model name prefixes for known providers
   if (model.startsWith('gpt-') || model.startsWith('o1-')) {
     return 'openai';
   }
@@ -225,6 +236,8 @@ export const getAIProvider = (model: string): ApiProvider => {
   if (model === 'custom') {
     return 'custom';
   }
+
+  // Priority 3: Default to google for Gemini models
   return 'google';
 };
 

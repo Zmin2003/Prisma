@@ -1,22 +1,56 @@
 
 import React, { useState } from 'react';
-import { Plus, Trash2, Bot, Key, Globe, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Bot, Key, Globe, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { AppConfig, ApiProvider, CustomModel } from '../../types';
 import { MODELS } from '../../config';
+import ModelSearchModal from '../ModelSearchModal';
+import { ModelInfo } from '../../services/modelSearchService';
 
 interface ModelSectionProps {
   config: AppConfig;
   setConfig: (c: AppConfig) => void;
+  tavilyApiKey?: string;
 }
 
-const ModelSection = ({ config, setConfig }: ModelSectionProps) => {
+const ModelSection = ({ config, setConfig, tavilyApiKey }: ModelSectionProps) => {
   const [newModelName, setNewModelName] = useState('');
   const [newModelProvider, setNewModelProvider] = useState<ApiProvider>('custom');
   const [newModelApiKey, setNewModelApiKey] = useState('');
   const [newModelBaseUrl, setNewModelBaseUrl] = useState('');
   const [expandedModelId, setExpandedModelId] = useState<string | null>(null);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
   const customModels = config.customModels || [];
+
+  // Handle model selection from search modal
+  const handleSelectModelFromSearch = (model: ModelInfo) => {
+    // Check if model already exists
+    const existingPresetModel = MODELS.find(m => m.value === model.id);
+    if (existingPresetModel) {
+      alert(`Model "${model.name}" already exists as a preset model.`);
+      return;
+    }
+
+    const existingCustomModel = customModels.find(m => m.name === model.id || m.name === model.name);
+    if (existingCustomModel) {
+      alert(`Model "${model.name}" already exists in your custom models.`);
+      return;
+    }
+
+    // Add the model
+    const newModel: CustomModel = {
+      id: `custom-${Date.now()}`,
+      name: model.id,
+      provider: model.provider,
+      apiKey: undefined,
+      baseUrl: undefined
+    };
+
+    setConfig({
+      ...config,
+      customModels: [...customModels, newModel]
+    });
+  };
 
   const handleAddModel = () => {
     if (!newModelName.trim()) return;
@@ -152,6 +186,23 @@ const ModelSection = ({ config, setConfig }: ModelSectionProps) => {
             <Plus size={16} />
             Add Model
           </button>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200"></div>
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="px-2 bg-slate-50 text-slate-400">or</span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setIsSearchModalOpen(true)}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-all"
+          >
+            <Search size={16} />
+            Search Models
+          </button>
         </div>
 
         {customModels.length > 0 && (
@@ -233,6 +284,14 @@ const ModelSection = ({ config, setConfig }: ModelSectionProps) => {
           </div>
         )}
       </div>
+
+      {/* Model Search Modal */}
+      <ModelSearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+        onSelectModel={handleSelectModelFromSearch}
+        externalSearchConfig={tavilyApiKey ? { apiKey: tavilyApiKey } : undefined}
+      />
     </div>
   );
 };

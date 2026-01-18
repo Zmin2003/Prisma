@@ -1,8 +1,8 @@
 
-import React, { useRef, useLayoutEffect, useState, useEffect } from 'react';
-import { ArrowUp, Square, Paperclip, X, Image as ImageIcon } from 'lucide-react';
-import { AppState, MessageAttachment } from '../types';
-import { fileToBase64 } from '../utils';
+import React, { useRef, useLayoutEffect, useState, useEffect, useCallback } from 'react';
+import { ArrowUp, Square, Paperclip, X, Image as ImageIcon, File, FileText, Code, Database } from 'lucide-react';
+import { AppState, MessageAttachment, AttachmentType } from '../types';
+import { fileUploadService, formatFileSize, getAttachmentType, getMimeType } from '../services/fileUploadService';
 
 interface InputSectionProps {
   query: string;
@@ -18,6 +18,24 @@ const InputSection = ({ query, setQuery, onRun, onStop, appState, focusTrigger }
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isComposing, setIsComposing] = useState(false);
   const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounterRef = useRef(0);
+
+  // Get icon for file type
+  const getFileIcon = (type: AttachmentType) => {
+    switch (type) {
+      case 'image':
+        return <ImageIcon size={14} className="text-blue-500" />;
+      case 'document':
+        return <FileText size={14} className="text-orange-500" />;
+      case 'code':
+        return <Code size={14} className="text-green-500" />;
+      case 'data':
+        return <Database size={14} className="text-purple-500" />;
+      default:
+        return <File size={14} className="text-gray-500" />;
+    }
+  };
 
   const adjustHeight = () => {
     if (textareaRef.current) {
@@ -51,33 +69,71 @@ const InputSection = ({ query, setQuery, onRun, onStop, appState, focusTrigger }
     adjustHeight();
   }, [query]);
 
-  const processFile = async (file: File) => {
-    if (!file.type.startsWith('image/')) return;
-    
+  const processFile = useCallback(async (file: File) => {
+    // Validate file
+    const validation = fileUploadService.validateFile(file);
+    if (!validation.valid) {
+      console.error("File validation failed:", validation.error);
+      return;
+    }
+
     try {
-      const base64 = await fileToBase64(file);
-      const newAttachment: MessageAttachment = {
-        id: Math.random().toString(36).substring(7),
-        type: 'image',
-        mimeType: file.type,
-        data: base64,
-        url: URL.createObjectURL(file)
-      };
-      setAttachments(prev => [...prev, newAttachment]);
+      const result = await fileUploadService.uploadFile(file);
+      if (result.success && result.attachment) {
+        setAttachments(prev => [...prev, result.attachment!]);
+      } else {
+        console.error("Failed to process file:", result.error);
+      }
     } catch (e) {
       console.error("Failed to process file", e);
     }
-  };
+  }, []);
+
+  // Drag and drop handlers
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCounterRef.current = 0;
+
+    if (appState !== 'idle') return;
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      Array.from(files).forEach(processFile);
+    }
+  }, [appState, processFile]);
 
   const handlePaste = (e: React.ClipboardEvent) => {
     const items = e.clipboardData.items;
     for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf('image') !== -1) {
-        const file = items[i].getAsFile();
-        if (file) {
-          e.preventDefault();
-          processFile(file);
-        }
+      const file = items[i].getAsFile();
+      if (file) {
+        e.preventDefault();
+        processFile(file);
       }
     }
   };
@@ -91,6 +147,10 @@ const InputSection = ({ query, setQuery, onRun, onStop, appState, focusTrigger }
   };
 
   const removeAttachment = (id: string) => {
+    const att = attachments.find(a => a.id === id);
+    if (att?.url) {
+      fileUploadService.revokeObjectUrl(att.url);
+    }
     setAttachments(prev => prev.filter(a => a.id !== id));
   };
 
@@ -115,17 +175,47 @@ const InputSection = ({ query, setQuery, onRun, onStop, appState, focusTrigger }
   const isRunning = appState !== 'idle';
 
   return (
-    <div className="w-full">
+    <div
+      className="w-full"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {/* Drag overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-blue-500/10 backdrop-blur-sm border-2 border-dashed border-blue-500 rounded-[26px] pointer-events-none">
+          <div className="text-center">
+            <Paperclip className="w-8 h-8 text-blue-500 mx-auto mb-2" />
+            <p className="text-sm font-medium text-blue-600">Drop files here</p>
+          </div>
+        </div>
+      )}
+
       {/* Attachments Preview */}
       {attachments.length > 0 && (
         <div className="flex gap-2 mb-2 overflow-x-auto px-1 py-1">
           {attachments.map(att => (
             <div key={att.id} className="relative group shrink-0">
-              <img 
-                src={att.url} 
-                alt="attachment" 
-                className="h-16 w-16 object-cover rounded-lg border border-slate-200 shadow-sm"
-              />
+              {att.type === 'image' && att.url ? (
+                <img
+                  src={att.url}
+                  alt={att.fileName || 'attachment'}
+                  className="h-16 w-16 object-cover rounded-lg border border-slate-200 shadow-sm"
+                />
+              ) : (
+                <div className="h-16 w-16 flex flex-col items-center justify-center rounded-lg border border-slate-200 shadow-sm bg-slate-50">
+                  {getFileIcon(att.type)}
+                  <span className="text-[10px] text-slate-500 mt-1 px-1 truncate max-w-full">
+                    {att.fileName?.split('.').pop()?.toUpperCase() || 'FILE'}
+                  </span>
+                </div>
+              )}
+              {att.fileName && (
+                <div className="absolute -bottom-1 left-0 right-0 text-[9px] text-center text-slate-500 truncate px-0.5">
+                  {att.fileName.length > 10 ? att.fileName.substring(0, 8) + '...' : att.fileName}
+                </div>
+              )}
               <button
                 onClick={() => removeAttachment(att.id)}
                 className="absolute -top-1.5 -right-1.5 bg-slate-900 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
@@ -138,13 +228,13 @@ const InputSection = ({ query, setQuery, onRun, onStop, appState, focusTrigger }
       )}
 
       {/* Input Container */}
-      <div className="w-full flex items-end p-2 bg-white/70 backdrop-blur-xl border border-slate-200/50 rounded-[26px] shadow-2xl focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:bg-white/90 transition-colors duration-200">
-        
-        <input 
-          type="file" 
+      <div className={`w-full flex items-end p-2 bg-white/70 backdrop-blur-xl border rounded-[26px] shadow-2xl focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:bg-white/90 transition-colors duration-200 ${isDragging ? 'border-blue-500' : 'border-slate-200/50'}`}>
+
+        <input
+          type="file"
           ref={fileInputRef}
-          className="hidden" 
-          accept="image/*" 
+          className="hidden"
+          accept={fileUploadService.getSupportedExtensions()}
           multiple
           onChange={handleFileSelect}
         />
@@ -152,7 +242,7 @@ const InputSection = ({ query, setQuery, onRun, onStop, appState, focusTrigger }
         <button
           onClick={() => fileInputRef.current?.click()}
           className="flex-shrink-0 p-2.5 mb-0.5 ml-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-          title="Attach Image"
+          title="Attach files (images, documents, code, data)"
           disabled={isRunning}
         >
           <Paperclip size={20} />

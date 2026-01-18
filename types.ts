@@ -81,12 +81,18 @@ export type AppConfig = {
   customModels?: CustomModel[];
 };
 
+export type AttachmentType = 'image' | 'document' | 'code' | 'data' | 'other';
+
 export type MessageAttachment = {
   id: string;
-  type: 'image';
+  type: AttachmentType;
   mimeType: string;
   data: string; // Base64 string
   url?: string; // For display
+  fileName?: string; // Original file name
+  fileSize?: number; // File size in bytes
+  isChunked?: boolean; // Whether file was uploaded in chunks
+  chunkCount?: number; // Number of chunks if chunked
 };
 
 export type ChatMessage = {

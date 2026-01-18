@@ -11,6 +11,8 @@ import { useDeepThinkState } from './useDeepThinkState';
 import { logger } from '../services/logger';
 import { withRetry, classifyError } from '../services/utils/retry';
 import { performanceMonitor } from '../services/performanceMonitor';
+import { validateFullConfig, mapToUISeverity } from '../services/validationService';
+import { errorService } from '../services/errorService';
 
 export const useDeepThink = () => {
   const {
@@ -309,7 +311,7 @@ export const useDeepThink = () => {
     abortControllerRef.current = new AbortController();
     const signal = abortControllerRef.current.signal;
 
-    logger.info('System', 'Starting DeepThink Process', { model, provider: getAIProvider(model) });
+    logger.info('System', 'Starting DeepThink Process', { model, provider: getAIProvider(model, config.customModels) });
 
     // Store context for snapshots
     currentSessionIdRef.current = sessionId || `session-${Date.now()}`;
@@ -329,9 +331,40 @@ export const useDeepThink = () => {
     setDegradationStatus(null);
     errorCountRef.current = { timeout: 0, retry: 0, api: 0, network: 0 };
     currentDegradationRef.current = 'full' as DegradationLevel;
-    
+
+    // Pre-validation gate: validate config before API call
+    const validationResult = validateFullConfig(model, config);
+    if (!validationResult.isValid) {
+      logger.error('Validation', 'Pre-execution validation failed', validationResult.errors);
+
+      // Report errors to error service for UI display
+      validationResult.errors.forEach(err => {
+        const severity = mapToUISeverity(err);
+        errorService.report({
+          category: 'Config',
+          severity: severity === 'card' ? 'critical' : 'high',
+          message: err.message,
+          code: err.code,
+          userMessage: err.message,
+          actionable: true,
+          suggestedAction: err.suggestedAction,
+          timestamp: Date.now()
+        });
+      });
+
+      // Abort execution
+      setAppState('idle');
+      setProcessEndTime(Date.now());
+      return;
+    }
+
+    // Log warnings but continue
+    validationResult.warnings.forEach(warn => {
+      logger.warn('Validation', warn.message, { code: warn.code });
+    });
+
     const customModelConfig = findCustomModel(model, config.customModels);
-    const provider = customModelConfig?.provider || getAIProvider(model);
+    const provider = customModelConfig?.provider || getAIProvider(model, config.customModels);
 
     const ai = getAI({
       provider,
