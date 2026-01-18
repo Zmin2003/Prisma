@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Settings, ChevronDown, Menu, HelpCircle, AlertCircle, Clock, Activity } from 'lucide-react';
+import { Settings, ChevronDown, Menu, HelpCircle, AlertCircle, Clock, Activity, Search } from 'lucide-react';
 import { getAllModels } from '../config';
 import { ModelOption, AppConfig } from '../types';
 import Logo from './Logo';
@@ -15,10 +15,11 @@ interface HeaderProps {
   onOpenErrorPanel?: () => void;
   onOpenHistoryPanel?: () => void;
   onOpenPerformancePanel?: () => void;
+  onOpenSearch?: () => void;
   config: AppConfig;
 }
 
-const Header = ({ selectedModel, setSelectedModel, onOpenSettings, onToggleSidebar, onNewChat, onOpenTour, onOpenErrorPanel, onOpenHistoryPanel, onOpenPerformancePanel, config }: HeaderProps) => {
+const Header = ({ selectedModel, setSelectedModel, onOpenSettings, onToggleSidebar, onNewChat, onOpenTour, onOpenErrorPanel, onOpenHistoryPanel, onOpenPerformancePanel, onOpenSearch, config }: HeaderProps) => {
   const availableModels = getAllModels(config);
 
   return (
@@ -58,6 +59,16 @@ const Header = ({ selectedModel, setSelectedModel, onOpenSettings, onToggleSideb
             </select>
             <ChevronDown className="absolute right-3 top-3 text-slate-400 pointer-events-none group-hover:text-slate-600 transition-colors" size={14} />
           </div>
+
+          {onOpenSearch && (
+            <button
+              onClick={onOpenSearch}
+              className="p-2.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors text-slate-500 hover:text-slate-900 shadow-sm"
+              title="Search Models"
+            >
+              <Search size={18} />
+            </button>
+          )}
 
           {onOpenTour && (
             <button

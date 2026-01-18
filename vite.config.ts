@@ -31,6 +31,10 @@ function customApiProxyMiddleware(): Connect.NextHandleFunction {
       }
       const body = Buffer.concat(chunks);
 
+      // Check if this is a streaming request (SSE)
+      const isStreamingRequest = req.headers['accept']?.includes('text/event-stream') ||
+        (body.length > 0 && body.toString().includes('"stream":true'));
+
       // Forward headers (excluding hop-by-hop headers)
       const forwardHeaders: Record<string, string> = {};
       const skipHeaders = ['host', 'connection', 'x-target-url', 'transfer-encoding'];
@@ -48,13 +52,31 @@ function customApiProxyMiddleware(): Connect.NextHandleFunction {
         body: ['GET', 'HEAD'].includes(req.method || '') ? undefined : body,
       });
 
-      // Forward response status and headers
+      // Forward response status
       res.statusCode = response.status;
+
+      // Check if response is SSE
+      const contentType = response.headers.get('content-type') || '';
+      const isSSEResponse = contentType.includes('text/event-stream') || isStreamingRequest;
+
+      // Forward response headers
       response.headers.forEach((value, key) => {
         if (!['transfer-encoding', 'connection'].includes(key.toLowerCase())) {
           res.setHeader(key, value);
         }
       });
+
+      // Set SSE-specific headers for streaming responses
+      if (isSSEResponse) {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache, no-transform');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no');
+        // Flush headers immediately for SSE
+        if (typeof (res as any).flushHeaders === 'function') {
+          (res as any).flushHeaders();
+        }
+      }
 
       // Stream the response body
       if (response.body) {
@@ -64,6 +86,10 @@ function customApiProxyMiddleware(): Connect.NextHandleFunction {
             const { done, value } = await reader.read();
             if (done) break;
             res.write(value);
+            // Flush each chunk immediately for SSE
+            if (isSSEResponse && typeof (res as any).flush === 'function') {
+              (res as any).flush();
+            }
           }
         } finally {
           reader.releaseLock();

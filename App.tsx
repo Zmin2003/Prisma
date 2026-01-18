@@ -18,6 +18,7 @@ import ErrorPanel from './components/ErrorPanel';
 import ErrorCard from './components/ErrorCard';
 import { HistoryPanel } from './components/HistoryPanel';
 import { PerformancePanel } from './components/PerformancePanel';
+import ModelSearchModal from './components/ModelSearchModal';
 
 const WIZARD_COMPLETED_KEY = 'prisma-wizard-completed';
 const TOUR_COMPLETED_KEY = 'prisma-tour-completed';
@@ -28,6 +29,7 @@ const App = () => {
   const [showErrorPanel, setShowErrorPanel] = useState(false);
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
   const [showPerformancePanel, setShowPerformancePanel] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
   const {
     sessions,
     currentSessionId,
@@ -134,6 +136,15 @@ const App = () => {
           onClose={() => setShowPerformancePanel(false)}
         />
 
+        <ModelSearchModal
+          isOpen={showSearchModal}
+          onClose={() => setShowSearchModal(false)}
+          onSelectModel={(model) => {
+            setSelectedModel(model.id as any);
+            setShowSearchModal(false);
+          }}
+        />
+
         <ConfigWizard
           isOpen={showWizard}
           onClose={handleWizardClose}
@@ -165,6 +176,7 @@ const App = () => {
           onOpenErrorPanel={() => setShowErrorPanel(true)}
           onOpenHistoryPanel={() => setShowHistoryPanel(true)}
           onOpenPerformancePanel={() => setShowPerformancePanel(true)}
+          onOpenSearch={() => setShowSearchModal(true)}
           config={config}
         />
 
