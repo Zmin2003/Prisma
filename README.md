@@ -1,4 +1,4 @@
-# Prisma - DeepThink Multi-Agent Reasoning
+# DeepThink Multi-Agent Reasoning
 
 基于 LangGraph 的多智能体推理引擎。
 
