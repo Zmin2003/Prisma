@@ -25,7 +25,7 @@ const GlobalTimer = ({ start, end, appState }: { start: number | null | undefine
     if (isRunning) {
       interval = setInterval(() => {
         setElapsed(Date.now() - (start || 0));
-      }, 100);
+      }, 500);
     } else if (appState === 'completed' && start && end) {
       setElapsed(end - start);
     } else if (appState === 'idle') {
@@ -118,8 +118,8 @@ const ProcessFlow = ({ appState, managerAnalysis, experts, synthesisThoughts, de
             onToggle={() => setIsExpanded(!isExpanded)}
           >
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pt-2">
-              {experts.map((expert) => (
-                <ExpertCard key={expert.id} expert={expert} />
+              {experts.map((expert, idx) => (
+                <ExpertCard key={expert.id ?? `${expert.role}-${expert.round}-${idx}`} expert={expert} />
               ))}
             </div>
           </ProcessNode>

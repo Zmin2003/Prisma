@@ -82,7 +82,7 @@ const ChatArea = ({
           {/* History */}
           {messages.map((msg, idx) => (
             <ChatMessageItem 
-              key={msg.id} 
+              key={msg.id ?? `msg-${idx}`} 
               message={msg} 
               isLast={idx === messages.length - 1} 
             />
@@ -110,17 +110,11 @@ const ChatArea = ({
                     />
                   </div>
 
-                  {/* Streaming Output */}
+                  {/* Streaming Output - plain text for performance */}
                   {finalOutput && (
-                    <div className="prose prose-slate max-w-none">
-                      <ChatMessageItem 
-                        message={{
-                          id: 'streaming', 
-                          role: 'model', 
-                          content: finalOutput, 
-                          isThinking: false
-                        }} 
-                      />
+                    <div className="whitespace-pre-wrap font-sans text-sm text-foreground leading-relaxed">
+                      {finalOutput}
+                      <span className="inline-block w-2 h-4 ml-1 bg-primary/60 animate-pulse" />
                     </div>
                   )}
                 </div>

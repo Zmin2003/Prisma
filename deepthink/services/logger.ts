@@ -10,55 +10,77 @@ export interface LogEntry {
   data?: any;
 }
 
+const isProd = import.meta.env.PROD;
+
 class LoggerService {
   private logs: LogEntry[] = [];
   private maxLogs: number = 5000;
+  private persistTimeout: ReturnType<typeof setTimeout> | null = null;
+  private pendingPersist = false;
 
   constructor() {
-    // Attempt to restore logs from sessionStorage on load (optional persistence)
-    try {
-      const saved = sessionStorage.getItem('deepthink_logs');
-      if (saved) {
-        this.logs = JSON.parse(saved);
+    if (!isProd) {
+      try {
+        const saved = sessionStorage.getItem('deepthink_logs');
+        if (saved) {
+          this.logs = JSON.parse(saved);
+        }
+      } catch (e) {
+        console.warn('Failed to restore logs');
       }
-    } catch (e) {
-      console.warn('Failed to restore logs');
     }
     
-    this.info('System', 'Logger service initialized');
+    if (!isProd) {
+      this.info('System', 'Logger service initialized');
+    }
   }
 
   private persist() {
-    try {
-      sessionStorage.setItem('deepthink_logs', JSON.stringify(this.logs.slice(-500))); // Persist last 500 only
-    } catch (e) {
-      // Ignore quota errors
-    }
+    if (isProd) return;
+    
+    if (this.pendingPersist) return;
+    this.pendingPersist = true;
+    
+    if (this.persistTimeout) clearTimeout(this.persistTimeout);
+    this.persistTimeout = setTimeout(() => {
+      try {
+        sessionStorage.setItem('deepthink_logs', JSON.stringify(this.logs.slice(-500)));
+      } catch (e) {
+      }
+      this.pendingPersist = false;
+    }, 2000);
   }
 
   add(level: LogLevel, category: LogCategory, message: string, data?: any) {
+    if (isProd && (level === 'info' || level === 'debug')) {
+      return;
+    }
+
+    const redactedData = data ? JSON.parse(JSON.stringify(data, this.replacer)) : undefined;
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
       category,
       message,
-      data: data ? JSON.parse(JSON.stringify(data, this.replacer)) : undefined
+      data: redactedData
     };
 
     this.logs.push(entry);
     
-    // Trim if too large
     if (this.logs.length > this.maxLogs) {
       this.logs = this.logs.slice(this.logs.length - this.maxLogs);
     }
 
-    const style = level === 'error' ? 'color: red' : level === 'warn' ? 'color: orange' : 'color: cyan';
-    console.log(`%c[${category}] ${message}`, style, data || '');
+    if (!isProd) {
+      const style = level === 'error' ? 'color: red' : level === 'warn' ? 'color: orange' : 'color: cyan';
+      console.log(`%c[${category}] ${message}`, style, redactedData || '');
+    } else if (level === 'error') {
+      console.error(`[${category}] ${message}`, redactedData || '');
+    }
 
     this.persist();
   }
 
-  // Circular reference replacer for JSON
   private replacer(key: string, value: any) {
     const normalizedKey = key.toLowerCase();
     if (normalizedKey.includes('apikey') || normalizedKey.includes('api_key') || normalizedKey.includes('token') || normalizedKey.includes('secret') || normalizedKey === 'auth') return '***REDACTED***';

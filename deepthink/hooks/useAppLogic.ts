@@ -10,12 +10,6 @@ const sanitizeConfigForStorage = (config: AppConfig): AppConfig => {
   const sanitized = { ...config };
   delete (sanitized as any).customApiKey;
   delete (sanitized as any).appApiKey;
-  if (sanitized.customModels) {
-    sanitized.customModels = sanitized.customModels.map(m => ({
-      ...m,
-      apiKey: undefined
-    }));
-  }
   return sanitized;
 };
 
@@ -49,7 +43,6 @@ const persistSecret = (key: string, value: string, remember: boolean | undefined
 };
 
 export const useAppLogic = () => {
-  // Session Management
   const { 
     sessions, 
     currentSessionId, 
@@ -60,19 +53,16 @@ export const useAppLogic = () => {
     getSession
   } = useChatSessions();
 
-  // UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [focusTrigger, setFocusTrigger] = useState(0); // Trigger for input focus
+  const [focusTrigger, setFocusTrigger] = useState(0);
 
-  // Active Chat State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [query, setQuery] = useState('');
 
-  // App Configuration with Persistence
   const [selectedModel, setSelectedModel] = useState<ModelOption>(() => {
     const cached = localStorage.getItem(STORAGE_KEYS.MODEL);
-    return (cached as ModelOption) || 'gemini-3-flash-preview';
+    return (cached as ModelOption) || 'deepthink';
   });
 
   const [config, setConfig] = useState<AppConfig>(() => {
@@ -97,7 +87,6 @@ export const useAppLogic = () => {
     };
   });
 
-  // Deep Think Engine
   const { 
     appState, 
     managerAnalysis, 
@@ -112,7 +101,6 @@ export const useAppLogic = () => {
   } = useDeepThink();
 
 
-  // Persistence Effects
   useEffect(() => {
     const safeConfig = sanitizeConfigForStorage(config);
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(safeConfig));
@@ -147,9 +135,8 @@ export const useAppLogic = () => {
     }
   }, [currentSessionId]);
 
-  // Handle Model Constraints
   useEffect(() => {
-    const validLevels = getValidThinkingLevels(selectedModel);
+    const validLevels = getValidThinkingLevels();
     setConfig(prev => {
       const newPlanning = validLevels.includes(prev.planningLevel) ? prev.planningLevel : 'low';
       const newExpert = validLevels.includes(prev.expertLevel) ? prev.expertLevel : 'low';
@@ -167,13 +154,12 @@ export const useAppLogic = () => {
     });
   }, [selectedModel]);
 
-  // Sync Messages when switching sessions
   useEffect(() => {
     if (currentSessionId) {
       const session = getSession(currentSessionId);
       if (session) {
         setMessages(session.messages);
-        setSelectedModel(session.model || 'gemini-3-flash-preview');
+        setSelectedModel(session.model || 'deepthink');
         logger.debug('User', 'Session switched', { id: currentSessionId, title: session.title });
       }
     } else {
@@ -181,14 +167,13 @@ export const useAppLogic = () => {
     }
   }, [currentSessionId, getSession]);
 
-  // Handle AI Completion
   useEffect(() => {
     if (appState === 'completed') {
       const duration = (processStartTime && processEndTime) ? (processEndTime - processStartTime) : undefined;
       logger.info('System', 'Request processing completed', { duration });
 
       const finalizedMessage: ChatMessage = {
-        id: `ai-${Date.now()}`,
+        id: `ai-${crypto.randomUUID()}`,
         role: 'model',
         content: finalOutput,
         analysis: managerAnalysis,
@@ -208,7 +193,6 @@ export const useAppLogic = () => {
       }
 
       resetDeepThink();
-      // Refocus after completion
       setFocusTrigger(prev => prev + 1);
     }
   }, [appState, finalOutput, managerAnalysis, experts, synthesisThoughts, resetDeepThink, processStartTime, processEndTime, currentSessionId, messages, selectedModel, createSession, updateSessionMessages]);
@@ -219,7 +203,7 @@ export const useAppLogic = () => {
     logger.info('User', 'New Request', { query, hasAttachments: attachments.length > 0 });
 
     const userMsg: ChatMessage = {
-      id: `user-${Date.now()}`,
+      id: `user-${crypto.randomUUID()}`,
       role: 'user',
       content: query,
       attachments: attachments
@@ -246,7 +230,7 @@ export const useAppLogic = () => {
     setMessages([]);
     setQuery('');
     resetDeepThink();
-    setFocusTrigger(prev => prev + 1); // Trigger focus
+    setFocusTrigger(prev => prev + 1);
     if (window.innerWidth < 1024) setIsSidebarOpen(false);
   }, [stopDeepThink, setCurrentSessionId, resetDeepThink]);
 
@@ -254,7 +238,7 @@ export const useAppLogic = () => {
     stopDeepThink();
     resetDeepThink();
     setCurrentSessionId(id);
-    setFocusTrigger(prev => prev + 1); // Trigger focus
+    setFocusTrigger(prev => prev + 1);
     if (window.innerWidth < 1024) setIsSidebarOpen(false);
   }, [stopDeepThink, resetDeepThink, setCurrentSessionId]);
 

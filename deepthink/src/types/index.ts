@@ -1,15 +1,6 @@
-export type ModelOption = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'custom' | string;
+export type ModelOption = 'deepthink' | string;
 export type ThinkingLevel = 'minimal' | 'low' | 'medium' | 'high';
-export type ApiProvider = 'google' | 'openai' | 'deepseek' | 'anthropic' | 'xai' | 'mistral' | 'custom';
 export type Theme = 'light' | 'dark' | 'system';
-
-export type CustomModel = {
-  id: string;
-  name: string;
-  provider: ApiProvider;
-  apiKey?: string;
-  baseUrl?: string;
-};
 
 export type ExpertConfig = {
   id: string;
@@ -46,7 +37,6 @@ export type AppState = 'idle' | 'analyzing' | 'experts_working' | 'reviewing' | 
 export type ToolConfig = {
   enableWebSearch: boolean;
   webSearchProvider: 'tavily' | 'duckduckgo' | 'auto';
-  nativeWeb: boolean;
   maxSearchResults: number;
 };
 
@@ -55,7 +45,6 @@ export type AppConfig = {
   expertLevel: ThinkingLevel;
   synthesisLevel: ThinkingLevel;
   enableProcessStream?: boolean;
-  customModels?: CustomModel[];
   toolConfig?: ToolConfig;
 
   backendUrl?: string;
@@ -64,7 +53,6 @@ export type AppConfig = {
   rememberAppApiKey?: boolean;
 
   enableCustomApi?: boolean;
-  apiProvider?: ApiProvider;
   customApiKey?: string;
   rememberCustomApiKey?: boolean;
   customBaseUrl?: string;

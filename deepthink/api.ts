@@ -2,7 +2,6 @@
  * DeepThink Frontend API - 连接 Python 后端
  */
 
-import { ApiProvider, CustomModel } from './types';
 import { logger } from './services/logger';
 
 const DEFAULT_BACKEND_URL = import.meta.env?.VITE_BACKEND_URL || '';
@@ -28,14 +27,6 @@ const buildAuthHeaders = (appApiKey?: string): Record<string, string> => {
   const key = (appApiKey || '').trim();
   if (!key) return {};
   return { Authorization: `Bearer ${key}` };
-};
-
-export const findCustomModel = (modelName: string, customModels?: CustomModel[]): CustomModel | undefined => {
-  return customModels?.find(m => m.name === modelName);
-};
-
-export const getAIProvider = (model: string): ApiProvider => {
-  return 'custom';
 };
 
 export const getAI = (backendUrl?: string) => {
@@ -102,18 +93,6 @@ export interface BackendModel {
   owned_by: string;
 }
 
-export interface RegistryModel {
-  id: string;
-  display_name: string;
-  provider: string;
-  upstream_model: string;
-  base_url?: string;
-  credential_ref?: string;
-  enabled: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
 export async function listModels(options?: { backendUrl?: string; appApiKey?: string }): Promise<BackendModel[]> {
   try {
     const resp = await fetch(buildUrl('/v1/models', options?.backendUrl), {
@@ -127,102 +106,9 @@ export async function listModels(options?: { backendUrl?: string; appApiKey?: st
   }
 }
 
-export async function adminListModels(
-  adminKey: string,
-  options?: { backendUrl?: string }
-): Promise<RegistryModel[]> {
-  try {
-    const resp = await fetch(buildUrl('/admin/models', options?.backendUrl), {
-      headers: { 'X-Admin-Key': adminKey },
-    });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-    return data.models || [];
-  } catch (e) {
-    logger.error('API', 'Failed to list admin models', e);
-    throw e;
-  }
-}
-
-export interface CreateModelPayload {
-  id: string;
-  display_name: string;
-  provider: string;
-  upstream_model: string;
-  base_url?: string;
-  credential_ref?: string;
-  enabled?: boolean;
-}
-
-export async function adminCreateModel(
-  adminKey: string,
-  model: CreateModelPayload,
-  options?: { backendUrl?: string }
-): Promise<RegistryModel> {
-  const resp = await fetch(buildUrl('/admin/models', options?.backendUrl), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Admin-Key': adminKey,
-    },
-    body: JSON.stringify(model),
-  });
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({ detail: `HTTP ${resp.status}` }));
-    throw new Error(err.detail || `HTTP ${resp.status}`);
-  }
-  return resp.json();
-}
-
-export interface UpdateModelPayload {
-  display_name?: string;
-  provider?: string;
-  upstream_model?: string;
-  base_url?: string;
-  credential_ref?: string;
-  enabled?: boolean;
-}
-
-export async function adminUpdateModel(
-  adminKey: string,
-  modelId: string,
-  updates: UpdateModelPayload,
-  options?: { backendUrl?: string }
-): Promise<RegistryModel> {
-  const resp = await fetch(buildUrl(`/admin/models/${encodeURIComponent(modelId)}`, options?.backendUrl), {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Admin-Key': adminKey,
-    },
-    body: JSON.stringify(updates),
-  });
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({ detail: `HTTP ${resp.status}` }));
-    throw new Error(err.detail || `HTTP ${resp.status}`);
-  }
-  return resp.json();
-}
-
-export async function adminDeleteModel(
-  adminKey: string,
-  modelId: string,
-  options?: { backendUrl?: string }
-): Promise<void> {
-  const resp = await fetch(buildUrl(`/admin/models/${encodeURIComponent(modelId)}`, options?.backendUrl), {
-    method: 'DELETE',
-    headers: { 'X-Admin-Key': adminKey },
-  });
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({ detail: `HTTP ${resp.status}` }));
-    throw new Error(err.detail || `HTTP ${resp.status}`);
-  }
-}
-
 export interface ToolConfigPayload {
   enable_web_search?: boolean;
   web_search_provider?: string;
-  native_web?: boolean;
   max_search_results?: number;
 }
 
@@ -233,7 +119,6 @@ export interface InvokeOptions {
   context?: string;
   maxRounds?: number;
   model?: string;
-  provider?: string;
   apiKey?: string;
   baseUrl?: string;
   planningLevel?: string;
@@ -256,7 +141,6 @@ export async function invokeDeepThink(
       context: options?.context || '',
       max_rounds: options?.maxRounds || 5,
       model: options?.model,
-      provider: options?.provider,
       api_key: options?.apiKey,
       base_url: options?.baseUrl,
       planning_level: options?.planningLevel,
@@ -280,7 +164,6 @@ export interface StreamChatOptions {
   model?: string;
   maxRounds?: number;
   signal?: AbortSignal;
-  provider?: string;
   apiKey?: string;
   baseUrl?: string;
   planningLevel?: string;
@@ -295,7 +178,7 @@ export async function streamChat(
   options?: StreamChatOptions
 ): Promise<void> {
   const { onChunk, onComplete, onError } = callbacks;
-  const { backendUrl, appApiKey, signal, model, maxRounds, provider, apiKey, baseUrl, planningLevel, expertLevel, synthesisLevel, toolConfig } = options ?? {};
+  const { backendUrl, appApiKey, signal, model, maxRounds, apiKey, baseUrl, planningLevel, expertLevel, synthesisLevel, toolConfig } = options ?? {};
 
   try {
     const resp = await fetch(buildUrl('/v1/chat/completions', backendUrl), {
@@ -306,7 +189,6 @@ export async function streamChat(
         messages,
         stream: true,
         max_rounds: maxRounds || 5,
-        provider,
         api_key: apiKey,
         base_url: baseUrl,
         planning_level: planningLevel,
@@ -401,7 +283,6 @@ export interface WebSocketOptions {
   context?: string;
   maxRounds?: number;
   model?: string;
-  provider?: string;
   apiKey?: string;
   baseUrl?: string;
   planningLevel?: string;
@@ -428,7 +309,6 @@ export function connectWebSocket(
       app_api_key: options?.appApiKey,
       max_rounds: options?.maxRounds || 5,
       model: options?.model,
-      provider: options?.provider,
       api_key: options?.apiKey,
       base_url: options?.baseUrl,
       planning_level: options?.planningLevel,
@@ -467,7 +347,6 @@ export function connectWebSocket(
         callbacks.onError?.(new Error(data.message));
       }
     } catch {
-      // ignore parse errors
     }
   };
 

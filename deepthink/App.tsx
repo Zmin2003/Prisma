@@ -50,15 +50,13 @@ const App = ({ initialSessionId }: AppProps) => {
         config={config}
         setConfig={setConfig}
         model={selectedModel}
+        setModel={setSelectedModel}
       />
 
       <Header
-        selectedModel={selectedModel}
-        setSelectedModel={setSelectedModel}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onNewChat={handleNewChat}
-        config={config}
       />
 
       <div className="flex flex-1 overflow-hidden relative">

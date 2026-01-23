@@ -73,7 +73,7 @@ const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
 
 const MarkdownRenderer = ({ content, className }: { content: string, className?: string }) => {
   /**
-   * Pre-process content to handle common LaTeX delimiters from Gemini
+   * Pre-process content to handle common LaTeX delimiters
    * and optimize Markdown compatibility.
    */
   const preprocessMarkdown = (text: string) => {

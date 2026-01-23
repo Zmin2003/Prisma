@@ -12,11 +12,10 @@ const TimeDisplay = ({ start, end, status }: { start?: number, end?: number, sta
 
     // Update live timer
     if (status === 'thinking' && start) {
-      // Calculate initial diff immediately
       setElapsed(Date.now() - start);
       interval = setInterval(() => {
         setElapsed(Date.now() - start);
-      }, 100);
+      }, 500);
     }
     // Show final duration
     else if ((status === 'completed' || status === 'error') && start && end) {

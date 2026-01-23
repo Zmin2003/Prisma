@@ -1,20 +1,10 @@
 
-export type ModelOption = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'custom' | string;
+export type ModelOption = 'deepthink' | string;
 export type ThinkingLevel = 'minimal' | 'low' | 'medium' | 'high';
-export type ApiProvider = 'google' | 'openai' | 'deepseek' | 'anthropic' | 'xai' | 'mistral' | 'custom';
-
-export type CustomModel = {
-  id: string;
-  name: string;
-  provider: ApiProvider;
-  apiKey?: string;
-  baseUrl?: string;
-};
 
 export type ToolConfig = {
   enableWebSearch: boolean;
   webSearchProvider: 'tavily' | 'duckduckgo' | 'auto';
-  nativeWeb: boolean;
   maxSearchResults: number;
 };
 
@@ -33,7 +23,7 @@ export type ExpertResult = ExpertConfig & {
   thoughtProcess?: string; 
   startTime?: number;
   endTime?: number;
-  round?: number; // Track which iteration this expert belongs to
+  round?: number;
 };
 
 export type AnalysisResult = {
@@ -55,7 +45,6 @@ export type AppConfig = {
   expertLevel: ThinkingLevel;
   synthesisLevel: ThinkingLevel;
   enableProcessStream?: boolean;
-  customModels?: CustomModel[];
   toolConfig?: ToolConfig;
 
   backendUrl?: string;
@@ -64,7 +53,6 @@ export type AppConfig = {
   rememberAppApiKey?: boolean;
 
   enableCustomApi?: boolean;
-  apiProvider?: ApiProvider;
   customApiKey?: string;
   rememberCustomApiKey?: boolean;
   customBaseUrl?: string;
@@ -74,8 +62,8 @@ export type MessageAttachment = {
   id: string;
   type: 'image';
   mimeType: string;
-  data: string; // Base64 string
-  url?: string; // For display
+  data: string;
+  url?: string;
 };
 
 export type ChatMessage = {
@@ -83,12 +71,11 @@ export type ChatMessage = {
   role: 'user' | 'model';
   content: string;
   attachments?: MessageAttachment[];
-  // DeepThink Artifacts (only for model messages)
   analysis?: AnalysisResult | null;
   experts?: ExpertResult[];
   synthesisThoughts?: string;
   isThinking?: boolean;
-  totalDuration?: number; // Total time in ms
+  totalDuration?: number;
 };
 
 export type ChatSession = {

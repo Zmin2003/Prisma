@@ -3,7 +3,7 @@
  */
 
 import { useCallback } from 'react';
-import { connectWebSocket, streamChat, invokeDeepThink, ChatMessage as ApiChatMessage } from '../api';
+import { connectWebSocket, streamChat, ChatMessage as ApiChatMessage } from '../api';
 import { AppConfig, ModelOption, ExpertResult, ChatMessage } from '../types';
 import { useDeepThinkState } from './useDeepThinkState';
 import { logger } from '../services/logger';
@@ -64,7 +64,6 @@ export const useDeepThink = () => {
     const toolConfig = config.toolConfig ? {
       enable_web_search: config.toolConfig.enableWebSearch,
       web_search_provider: config.toolConfig.webSearchProvider,
-      native_web: config.toolConfig.nativeWeb,
       max_search_results: config.toolConfig.maxSearchResults,
     } : undefined;
 
@@ -74,7 +73,6 @@ export const useDeepThink = () => {
     const appApiKey = config.appApiKey;
 
     const enableUpstreamOverride = config.enableCustomApi ?? false;
-    const provider = enableUpstreamOverride ? config.apiProvider : undefined;
     const apiKey = enableUpstreamOverride ? config.customApiKey : undefined;
     const baseUrl = enableUpstreamOverride ? config.customBaseUrl : undefined;
 
@@ -100,8 +98,8 @@ export const useDeepThink = () => {
           logger.debug('State', `Node: ${state.node}, Status: ${state.status}`);
         },
         onExpertUpdate: (expertList) => {
-          const mapped: ExpertResult[] = expertList.map(e => ({
-            id: e.id,
+          const mapped: ExpertResult[] = expertList.map((e, idx) => ({
+            id: e.id ?? `${e.role}-${e.round ?? 1}-${idx}`,
             role: e.role,
             description: e.description || '',
             temperature: e.temperature || 0.7,
@@ -140,9 +138,8 @@ export const useDeepThink = () => {
         backendUrl,
         appApiKey,
         context: recentHistory,
-        maxRounds: 5,
+        maxRounds: 8,
         model,
-        provider,
         apiKey,
         baseUrl,
         planningLevel: config.planningLevel,
@@ -184,10 +181,9 @@ export const useDeepThink = () => {
         appApiKey,
         signal,
         model,
-        provider,
         apiKey,
         baseUrl,
-        maxRounds: 5,
+        maxRounds: 8,
         planningLevel: config.planningLevel,
         expertLevel: config.expertLevel,
         synthesisLevel: config.synthesisLevel,
