@@ -24,7 +24,7 @@ const ConnectionTest = ({ config, currentModel }: ConnectionTestProps) => {
     const startTime = Date.now();
 
     try {
-      const healthy = await healthCheck();
+      const healthy = await healthCheck({ backendUrl: config.backendUrl, appApiKey: config.appApiKey });
       const latency = Date.now() - startTime;
 
       if (healthy) {
@@ -134,10 +134,10 @@ const ConnectionTest = ({ config, currentModel }: ConnectionTestProps) => {
         <Server size={14} className="text-slate-400 mt-0.5 flex-shrink-0" />
         <div className="space-y-1">
           <p className="text-xs text-slate-500">
-            API keys are managed server-side by administrators. Clients only select model IDs.
+            If your backend is protected with APP_API_KEY, set it in Settings. You can also override upstream provider credentials per request.
           </p>
           <p className="text-xs text-slate-400">
-            Models registered in the Model Registry use server-configured credentials.
+            Models from the Model Registry use server-side configuration unless you enable the upstream override.
           </p>
         </div>
       </div>

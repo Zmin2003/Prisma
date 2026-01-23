@@ -23,9 +23,9 @@ const Header = ({ selectedModel, setSelectedModel, onOpenSettings, onToggleSideb
   const fetchModels = async () => {
     setLoading(true);
     try {
-      const models = await listModels();
+      const models = await listModels({ backendUrl: config.backendUrl, appApiKey: config.appApiKey });
       setBackendModels(models);
-      if (models.length > 0 && !models.some(m => m.id === selectedModel)) {
+      if (!selectedModel && models.length > 0) {
         setSelectedModel(models[0].id);
       }
     } catch {
@@ -36,22 +36,22 @@ const Header = ({ selectedModel, setSelectedModel, onOpenSettings, onToggleSideb
 
   useEffect(() => {
     fetchModels();
-  }, []);
+  }, [config.backendUrl, config.appApiKey]);
 
   const toggleTheme = () => {
     setTheme(effectiveTheme === 'dark' ? 'light' : 'dark');
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-background/80 dark:bg-background/90 backdrop-blur-md border-b border-border">
-      <div className="w-full px-4 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+    <header className="sticky top-0 z-50 glass-panel border-b-0">
+      <div className="w-full px-6 h-20 flex items-center justify-between">
+        <div className="flex items-center gap-6">
           <button
             onClick={onToggleSidebar}
-            className="p-2 -ml-2 text-muted-foreground hover:bg-accent rounded-lg transition-colors"
-            title="Toggle History"
+            className="p-2 -ml-2 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-all"
+            title="Toggle Sidebar"
           >
-            <Menu size={20} />
+            <Menu size={22} />
           </button>
 
           <div
@@ -59,28 +59,34 @@ const Header = ({ selectedModel, setSelectedModel, onOpenSettings, onToggleSideb
             onClick={onNewChat}
             title="Start New Chat"
           >
-            <Logo className="w-8 h-8 transition-transform group-hover:scale-110" />
-            <h1 className="font-bold text-lg tracking-tight text-primary group-hover:opacity-70 transition-opacity">
-              <span className="font-light">DeepThink</span>
+            <div className="relative">
+              <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full group-hover:bg-primary/30 transition-all opacity-0 group-hover:opacity-100" />
+              <Logo className="w-9 h-9 relative z-10 transition-transform group-hover:rotate-12 duration-500 ease-out" />
+            </div>
+            <h1 className="font-bold text-xl tracking-tight text-foreground/90 group-hover:text-primary transition-colors">
+              Deep<span className="font-light text-foreground/70">Think</span>
             </h1>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="relative group flex items-center gap-1">
+        <div className="flex items-center gap-3">
+          <div className="relative group flex items-center gap-2">
             {backendModels.length > 0 ? (
-              <>
-                <select
-                  value={backendModels.some(m => m.id === selectedModel) ? selectedModel : backendModels[0]?.id || ''}
+              <div className="relative">
+                <input
+                  list="deepthink-models"
+                  value={selectedModel}
                   onChange={(e) => setSelectedModel(e.target.value as ModelOption)}
-                  className="relative bg-background border border-border text-foreground text-sm rounded-lg focus:ring-ring focus:border-ring block w-auto p-2.5 outline-none appearance-none cursor-pointer pl-3 pr-8 shadow-sm font-medium hover:bg-accent transition-colors"
-                >
+                  placeholder="Model ID..."
+                  className="bg-secondary/50 hover:bg-secondary border border-transparent hover:border-primary/20 text-foreground text-sm rounded-full py-2 pl-4 pr-10 outline-none font-medium transition-all shadow-sm focus:ring-2 focus:ring-primary/20"
+                />
+                <datalist id="deepthink-models">
                   {backendModels.map(m => (
-                    <option key={m.id} value={m.id}>{m.id}</option>
+                    <option key={m.id} value={m.id} />
                   ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-3 text-muted-foreground pointer-events-none group-hover:text-foreground transition-colors" size={14} />
-              </>
+                </datalist>
+                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" size={14} />
+              </div>
             ) : (
               <button
                 onClick={onOpenSettings}
@@ -92,27 +98,29 @@ const Header = ({ selectedModel, setSelectedModel, onOpenSettings, onToggleSideb
             <button
               onClick={fetchModels}
               disabled={loading}
-              className="p-2 text-muted-foreground hover:bg-accent rounded-lg transition-colors"
+              className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-full transition-all"
               title="Refresh models"
             >
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             </button>
           </div>
 
+          <div className="w-px h-6 bg-border/50 mx-2" />
+
           <button
             onClick={toggleTheme}
-            className="p-2.5 rounded-lg bg-background border border-border hover:bg-accent transition-colors text-muted-foreground hover:text-foreground shadow-sm"
+            className="p-2.5 rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
             title="Toggle Theme"
           >
-            {effectiveTheme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            {effectiveTheme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
           </button>
 
           <button
             onClick={onOpenSettings}
-            className="p-2.5 rounded-lg bg-background border border-border hover:bg-accent transition-colors text-muted-foreground hover:text-foreground shadow-sm"
+            className="p-2.5 rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
             title="Configuration"
           >
-            <Settings size={18} />
+            <Settings size={20} />
           </button>
         </div>
       </div>

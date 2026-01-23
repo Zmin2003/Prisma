@@ -70,6 +70,14 @@ export const useDeepThink = () => {
 
     const useWebSocket = config.enableProcessStream ?? true;
 
+    const backendUrl = config.backendUrl;
+    const appApiKey = config.appApiKey;
+
+    const enableUpstreamOverride = config.enableCustomApi ?? false;
+    const provider = enableUpstreamOverride ? config.apiProvider : undefined;
+    const apiKey = enableUpstreamOverride ? config.customApiKey : undefined;
+    const baseUrl = enableUpstreamOverride ? config.customBaseUrl : undefined;
+
     if (useWebSocket) {
       const closeWs = connectWebSocket(query, {
         onStateUpdate: (state) => {
@@ -129,9 +137,14 @@ export const useDeepThink = () => {
           setProcessEndTime(Date.now());
         },
       }, {
+        backendUrl,
+        appApiKey,
         context: recentHistory,
         maxRounds: 5,
         model,
+        provider,
+        apiKey,
+        baseUrl,
         planningLevel: config.planningLevel,
         expertLevel: config.expertLevel,
         synthesisLevel: config.synthesisLevel,
@@ -167,8 +180,13 @@ export const useDeepThink = () => {
           setProcessEndTime(Date.now());
         },
       }, {
+        backendUrl,
+        appApiKey,
         signal,
         model,
+        provider,
+        apiKey,
+        baseUrl,
         maxRounds: 5,
         planningLevel: config.planningLevel,
         expertLevel: config.expertLevel,

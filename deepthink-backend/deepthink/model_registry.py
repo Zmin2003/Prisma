@@ -23,13 +23,15 @@ class RegistryModel(BaseModel):
     upstream_model: str = Field(..., min_length=1, max_length=128)
     base_url: Optional[str] = None
     credential_ref: Optional[str] = None
+    credential_id: Optional[str] = None
+    public: bool = True
     enabled: bool = True
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
     updated_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
 
 
 class ModelRegistry(BaseModel):
-    version: int = 1
+    version: int = 2
     updated_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
     models: list[RegistryModel] = Field(default_factory=list)
 
@@ -60,7 +62,7 @@ def save_registry(registry: ModelRegistry):
 
 def list_public_models() -> list[RegistryModel]:
     registry = load_registry()
-    return [m for m in registry.models if m.enabled]
+    return [m for m in registry.models if m.enabled and m.public]
 
 
 def list_all_models() -> list[RegistryModel]:
@@ -120,7 +122,12 @@ def resolve_model(model_id: str) -> Optional[dict]:
         return None
     
     api_key = None
-    if model.credential_ref:
+    
+    if model.credential_id:
+        from .credentials_store import decrypt_api_key
+        api_key = decrypt_api_key(model.credential_id)
+    
+    if api_key is None and model.credential_ref:
         api_key = os.environ.get(model.credential_ref)
     
     return {

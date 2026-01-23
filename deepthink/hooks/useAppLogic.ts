@@ -9,6 +9,7 @@ import { logger } from '../services/logger';
 const sanitizeConfigForStorage = (config: AppConfig): AppConfig => {
   const sanitized = { ...config };
   delete (sanitized as any).customApiKey;
+  delete (sanitized as any).appApiKey;
   if (sanitized.customModels) {
     sanitized.customModels = sanitized.customModels.map(m => ({
       ...m,
@@ -16,6 +17,35 @@ const sanitizeConfigForStorage = (config: AppConfig): AppConfig => {
     }));
   }
   return sanitized;
+};
+
+const SECRET_STORAGE_KEYS = {
+  CUSTOM_API_KEY: 'deepthink-secret-custom-api-key',
+  APP_API_KEY: 'deepthink-secret-app-api-key',
+};
+
+const readSecret = (key: string, remember: boolean | undefined): string => {
+  try {
+    const primary = remember ? localStorage : sessionStorage;
+    return primary.getItem(key) || '';
+  } catch {
+    return '';
+  }
+};
+
+const persistSecret = (key: string, value: string, remember: boolean | undefined) => {
+  try {
+    const primary = remember ? localStorage : sessionStorage;
+    const secondary = remember ? sessionStorage : localStorage;
+
+    if (value) {
+      primary.setItem(key, value);
+    } else {
+      primary.removeItem(key);
+    }
+    secondary.removeItem(key);
+  } catch {
+  }
 };
 
 export const useAppLogic = () => {
@@ -47,14 +77,24 @@ export const useAppLogic = () => {
 
   const [config, setConfig] = useState<AppConfig>(() => {
     const cached = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+
+    let base: AppConfig = DEFAULT_CONFIG;
     if (cached) {
       try {
-        return { ...DEFAULT_CONFIG, ...JSON.parse(cached) };
-      } catch (e) {
-        return DEFAULT_CONFIG;
+        base = { ...DEFAULT_CONFIG, ...JSON.parse(cached) };
+      } catch {
+        base = DEFAULT_CONFIG;
       }
     }
-    return DEFAULT_CONFIG;
+
+    const customApiKey = readSecret(SECRET_STORAGE_KEYS.CUSTOM_API_KEY, base.rememberCustomApiKey);
+    const appApiKey = readSecret(SECRET_STORAGE_KEYS.APP_API_KEY, base.rememberAppApiKey);
+
+    return {
+      ...base,
+      customApiKey,
+      appApiKey,
+    };
   });
 
   // Deep Think Engine
@@ -78,6 +118,14 @@ export const useAppLogic = () => {
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(safeConfig));
     logger.info('System', 'Settings updated');
   }, [config]);
+
+  useEffect(() => {
+    persistSecret(SECRET_STORAGE_KEYS.CUSTOM_API_KEY, config.customApiKey || '', config.rememberCustomApiKey);
+  }, [config.customApiKey, config.rememberCustomApiKey]);
+
+  useEffect(() => {
+    persistSecret(SECRET_STORAGE_KEYS.APP_API_KEY, config.appApiKey || '', config.rememberAppApiKey);
+  }, [config.appApiKey, config.rememberAppApiKey]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.MODEL, selectedModel);

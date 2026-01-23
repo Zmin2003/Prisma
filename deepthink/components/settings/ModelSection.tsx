@@ -49,7 +49,7 @@ const ModelSection = ({ config, setConfig }: ModelSectionProps) => {
     setLoading(true);
     setError(null);
     try {
-      const list = await adminListModels(adminKey);
+      const list = await adminListModels(adminKey, { backendUrl: config.backendUrl });
       setModels(list);
       sessionStorage.setItem('admin-key', adminKey);
     } catch (e: any) {
@@ -83,7 +83,7 @@ const ModelSection = ({ config, setConfig }: ModelSectionProps) => {
         base_url: newModelBaseUrl.trim() || undefined,
         credential_ref: newCredentialRef || undefined,
         enabled: true,
-      });
+      }, { backendUrl: config.backendUrl });
       await loadModels();
       setNewModelId('');
       setNewDisplayName('');
@@ -100,7 +100,7 @@ const ModelSection = ({ config, setConfig }: ModelSectionProps) => {
   const handleDeleteModel = async (modelId: string) => {
     if (!confirm(`Delete model "${modelId}"?`)) return;
     try {
-      await adminDeleteModel(adminKey, modelId);
+      await adminDeleteModel(adminKey, modelId, { backendUrl: config.backendUrl });
       await loadModels();
       if (expandedModelId === modelId) {
         setExpandedModelId(null);
@@ -112,7 +112,7 @@ const ModelSection = ({ config, setConfig }: ModelSectionProps) => {
 
   const handleToggleEnabled = async (model: RegistryModel) => {
     try {
-      await adminUpdateModel(adminKey, model.id, { enabled: !model.enabled });
+      await adminUpdateModel(adminKey, model.id, { enabled: !model.enabled }, { backendUrl: config.backendUrl });
       await loadModels();
     } catch (e: any) {
       setError(e.message || 'Failed to update model');

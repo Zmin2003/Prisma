@@ -7,12 +7,17 @@ services:
       - API_PORT=8080
       - ADMIN_API_KEY=${ADMIN_API_KEY:-}
       - APP_API_KEY=${APP_API_KEY:-}
+      - CREDENTIALS_ENC_KEY=${CREDENTIALS_ENC_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
       - XAI_API_KEY=${XAI_API_KEY:-}
       - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      - TAVILY_API_KEY=${TAVILY_API_KEY:-}
+      - CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS:-http://localhost:3000}
+      - BASE_URL_ALLOWLIST=${BASE_URL_ALLOWLIST:-}
       - DATA_DIR=/app/data
     volumes:
       - backend-data:/app/data

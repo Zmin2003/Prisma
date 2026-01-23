@@ -5,7 +5,30 @@
 import { ApiProvider, CustomModel } from './types';
 import { logger } from './services/logger';
 
-const BACKEND_URL = import.meta.env?.VITE_BACKEND_URL || '';
+const DEFAULT_BACKEND_URL = import.meta.env?.VITE_BACKEND_URL || '';
+
+const normalizeBackendUrl = (url?: string): string => {
+  const trimmed = (url || '').trim();
+  if (!trimmed) return '';
+  return trimmed.replace(/\/+$/, '');
+};
+
+const getBackendUrl = (backendUrl?: string): string => {
+  const normalized = normalizeBackendUrl(backendUrl);
+  return normalized || normalizeBackendUrl(DEFAULT_BACKEND_URL);
+};
+
+const buildUrl = (path: string, backendUrl?: string): string => {
+  const base = getBackendUrl(backendUrl);
+  const p = path.startsWith('/') ? path : `/${path}`;
+  return base ? `${base}${p}` : p;
+};
+
+const buildAuthHeaders = (appApiKey?: string): Record<string, string> => {
+  const key = (appApiKey || '').trim();
+  if (!key) return {};
+  return { Authorization: `Bearer ${key}` };
+};
 
 export const findCustomModel = (modelName: string, customModels?: CustomModel[]): CustomModel | undefined => {
   return customModels?.find(m => m.name === modelName);
@@ -15,9 +38,9 @@ export const getAIProvider = (model: string): ApiProvider => {
   return 'custom';
 };
 
-export const getAI = () => {
+export const getAI = (backendUrl?: string) => {
   return {
-    baseUrl: BACKEND_URL,
+    baseUrl: getBackendUrl(backendUrl),
   };
 };
 
@@ -61,9 +84,11 @@ export interface DeepThinkResult {
   synthesis_thoughts?: string;
 }
 
-export async function healthCheck(): Promise<boolean> {
+export async function healthCheck(options?: { backendUrl?: string; appApiKey?: string }): Promise<boolean> {
   try {
-    const resp = await fetch(`${BACKEND_URL}/health`);
+    const resp = await fetch(buildUrl('/health', options?.backendUrl), {
+      headers: buildAuthHeaders(options?.appApiKey),
+    });
     return resp.ok;
   } catch {
     return false;
@@ -89,9 +114,11 @@ export interface RegistryModel {
   updated_at: string;
 }
 
-export async function listModels(): Promise<BackendModel[]> {
+export async function listModels(options?: { backendUrl?: string; appApiKey?: string }): Promise<BackendModel[]> {
   try {
-    const resp = await fetch(`${BACKEND_URL}/v1/models`);
+    const resp = await fetch(buildUrl('/v1/models', options?.backendUrl), {
+      headers: buildAuthHeaders(options?.appApiKey),
+    });
     if (!resp.ok) return [];
     const data = await resp.json();
     return data.data || [];
@@ -100,9 +127,12 @@ export async function listModels(): Promise<BackendModel[]> {
   }
 }
 
-export async function adminListModels(adminKey: string): Promise<RegistryModel[]> {
+export async function adminListModels(
+  adminKey: string,
+  options?: { backendUrl?: string }
+): Promise<RegistryModel[]> {
   try {
-    const resp = await fetch(`${BACKEND_URL}/admin/models`, {
+    const resp = await fetch(buildUrl('/admin/models', options?.backendUrl), {
       headers: { 'X-Admin-Key': adminKey },
     });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -124,8 +154,12 @@ export interface CreateModelPayload {
   enabled?: boolean;
 }
 
-export async function adminCreateModel(adminKey: string, model: CreateModelPayload): Promise<RegistryModel> {
-  const resp = await fetch(`${BACKEND_URL}/admin/models`, {
+export async function adminCreateModel(
+  adminKey: string,
+  model: CreateModelPayload,
+  options?: { backendUrl?: string }
+): Promise<RegistryModel> {
+  const resp = await fetch(buildUrl('/admin/models', options?.backendUrl), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -149,8 +183,13 @@ export interface UpdateModelPayload {
   enabled?: boolean;
 }
 
-export async function adminUpdateModel(adminKey: string, modelId: string, updates: UpdateModelPayload): Promise<RegistryModel> {
-  const resp = await fetch(`${BACKEND_URL}/admin/models/${encodeURIComponent(modelId)}`, {
+export async function adminUpdateModel(
+  adminKey: string,
+  modelId: string,
+  updates: UpdateModelPayload,
+  options?: { backendUrl?: string }
+): Promise<RegistryModel> {
+  const resp = await fetch(buildUrl(`/admin/models/${encodeURIComponent(modelId)}`, options?.backendUrl), {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -165,8 +204,12 @@ export async function adminUpdateModel(adminKey: string, modelId: string, update
   return resp.json();
 }
 
-export async function adminDeleteModel(adminKey: string, modelId: string): Promise<void> {
-  const resp = await fetch(`${BACKEND_URL}/admin/models/${encodeURIComponent(modelId)}`, {
+export async function adminDeleteModel(
+  adminKey: string,
+  modelId: string,
+  options?: { backendUrl?: string }
+): Promise<void> {
+  const resp = await fetch(buildUrl(`/admin/models/${encodeURIComponent(modelId)}`, options?.backendUrl), {
     method: 'DELETE',
     headers: { 'X-Admin-Key': adminKey },
   });
@@ -184,6 +227,9 @@ export interface ToolConfigPayload {
 }
 
 export interface InvokeOptions {
+  backendUrl?: string;
+  appApiKey?: string;
+
   context?: string;
   maxRounds?: number;
   model?: string;
@@ -202,9 +248,9 @@ export async function invokeDeepThink(
 ): Promise<DeepThinkResult> {
   logger.info('API', 'Invoking DeepThink', { query: query.slice(0, 50) });
   
-  const resp = await fetch(`${BACKEND_URL}/deepthink/invoke`, {
+  const resp = await fetch(buildUrl('/deepthink/invoke', options?.backendUrl), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...buildAuthHeaders(options?.appApiKey) },
     body: JSON.stringify({
       query,
       context: options?.context || '',
@@ -216,6 +262,7 @@ export async function invokeDeepThink(
       planning_level: options?.planningLevel,
       expert_level: options?.expertLevel,
       synthesis_level: options?.synthesisLevel,
+      tool_config: options?.toolConfig,
     }),
   });
 
@@ -227,6 +274,9 @@ export async function invokeDeepThink(
 }
 
 export interface StreamChatOptions {
+  backendUrl?: string;
+  appApiKey?: string;
+
   model?: string;
   maxRounds?: number;
   signal?: AbortSignal;
@@ -245,12 +295,12 @@ export async function streamChat(
   options?: StreamChatOptions
 ): Promise<void> {
   const { onChunk, onComplete, onError } = callbacks;
-  const { signal, model, maxRounds, provider, apiKey, baseUrl, planningLevel, expertLevel, synthesisLevel, toolConfig } = options ?? {};
+  const { backendUrl, appApiKey, signal, model, maxRounds, provider, apiKey, baseUrl, planningLevel, expertLevel, synthesisLevel, toolConfig } = options ?? {};
 
   try {
-    const resp = await fetch(`${BACKEND_URL}/v1/chat/completions`, {
+    const resp = await fetch(buildUrl('/v1/chat/completions', backendUrl), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...buildAuthHeaders(appApiKey) },
       body: JSON.stringify({
         model: model || 'deepthink',
         messages,
@@ -345,6 +395,9 @@ export async function streamChat(
 }
 
 export interface WebSocketOptions {
+  backendUrl?: string;
+  appApiKey?: string;
+
   context?: string;
   maxRounds?: number;
   model?: string;
@@ -363,7 +416,8 @@ export function connectWebSocket(
   options?: WebSocketOptions
 ): () => void {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = BACKEND_URL ? BACKEND_URL.replace(/^http/, 'ws') : `${protocol}//${window.location.host}`;
+  const backendUrl = getBackendUrl(options?.backendUrl);
+  const wsUrl = backendUrl ? backendUrl.replace(/^http/, 'ws') : `${protocol}//${window.location.host}`;
   const ws = new WebSocket(`${wsUrl}/ws/chat`);
 
   ws.onopen = () => {
@@ -371,6 +425,7 @@ export function connectWebSocket(
     ws.send(JSON.stringify({
       query,
       context: options?.context || '',
+      app_api_key: options?.appApiKey,
       max_rounds: options?.maxRounds || 5,
       model: options?.model,
       provider: options?.provider,

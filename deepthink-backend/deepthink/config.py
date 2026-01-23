@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     
     admin_api_key: str = Field(default="", alias="ADMIN_API_KEY")
     app_api_key: str = Field(default="", alias="APP_API_KEY")
+    credentials_enc_key: str = Field(default="", alias="CREDENTIALS_ENC_KEY")
     
     default_provider: LLMProvider = Field(default=LLMProvider.GOOGLE, alias="DEFAULT_PROVIDER")
     default_model: str = Field(default="gemini-3-flash-preview", alias="DEFAULT_MODEL")

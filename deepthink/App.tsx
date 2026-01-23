@@ -42,10 +42,10 @@ const App = ({ initialSessionId }: AppProps) => {
   } = useAppLogic();
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground font-sans selection:bg-blue-100 dark:selection:bg-blue-900 selection:text-blue-900 dark:selection:text-blue-100">
-      
-      <SettingsModal 
-        isOpen={isSettingsOpen} 
+    <div className="flex flex-col h-screen bg-background text-foreground font-sans selection:bg-primary/20 selection:text-primary">
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         config={config}
         setConfig={setConfig}
@@ -62,7 +62,7 @@ const App = ({ initialSessionId }: AppProps) => {
       />
 
       <div className="flex flex-1 overflow-hidden relative">
-        <Sidebar 
+        <Sidebar
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
           sessions={sessions}
@@ -72,8 +72,8 @@ const App = ({ initialSessionId }: AppProps) => {
           onDeleteSession={handleDeleteSession}
         />
 
-        <main className="flex-1 flex flex-col min-w-0 bg-background relative">
-          <ChatArea 
+        <main className="flex-1 flex flex-col min-w-0 relative bg-background/50">
+          <ChatArea
             messages={messages}
             appState={appState}
             managerAnalysis={managerAnalysis}
@@ -84,14 +84,14 @@ const App = ({ initialSessionId }: AppProps) => {
             processEndTime={processEndTime}
           />
 
-          <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none p-4 pb-6 flex justify-center bg-gradient-to-t from-background via-background/80 to-transparent">
+          <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none p-4 pb-6 flex justify-center bg-gradient-to-t from-background via-background/95 to-transparent">
             <div className="pointer-events-auto w-full max-w-4xl">
-              <ChatInput 
-                query={query} 
-                setQuery={setQuery} 
-                onRun={handleRun} 
+              <ChatInput
+                query={query}
+                setQuery={setQuery}
+                onRun={handleRun}
                 onStop={stopDeepThink}
-                appState={appState} 
+                appState={appState}
                 focusTrigger={focusTrigger}
               />
             </div>

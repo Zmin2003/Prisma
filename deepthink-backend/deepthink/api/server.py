@@ -44,6 +44,14 @@ from ..model_registry import (
     delete_model as registry_delete_model,
     resolve_model as registry_resolve_model,
 )
+from ..credentials_store import (
+    list_credentials as creds_list,
+    get_credential as creds_get,
+    create_credential as creds_create,
+    update_credential as creds_update,
+    delete_credential as creds_delete,
+    is_encryption_configured,
+)
 from ..state import create_initial_state
 
 logging.basicConfig(level=logging.INFO)
@@ -69,6 +77,26 @@ def verify_admin_key(x_admin_key: Optional[str] = Header(None, alias="X-Admin-Ke
     return True
 
 
+def verify_app_key(
+    authorization: Optional[str] = Header(None),
+    x_app_key: Optional[str] = Header(None, alias="X-App-Key"),
+):
+    settings = get_settings()
+    if not settings.app_api_key:
+        return True
+
+    token = ""
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization.split(" ", 1)[1].strip()
+    elif x_app_key:
+        token = x_app_key.strip()
+
+    if token != settings.app_api_key:
+        raise HTTPException(status_code=401, detail="Invalid app key")
+
+    return True
+
+
 class AdminModelCreate(BaseModel):
     id: str = Field(..., pattern=r"^[a-zA-Z0-9._:-]+$", min_length=1, max_length=64)
     display_name: str = Field(..., min_length=1, max_length=128)
@@ -76,6 +104,8 @@ class AdminModelCreate(BaseModel):
     upstream_model: str = Field(..., min_length=1, max_length=128)
     base_url: Optional[str] = None
     credential_ref: Optional[str] = None
+    credential_id: Optional[str] = None
+    public: bool = True
     enabled: bool = True
 
 
@@ -85,7 +115,21 @@ class AdminModelUpdate(BaseModel):
     upstream_model: Optional[str] = Field(None, min_length=1, max_length=128)
     base_url: Optional[str] = None
     credential_ref: Optional[str] = None
+    credential_id: Optional[str] = None
+    public: Optional[bool] = None
     enabled: Optional[bool] = None
+
+
+class AdminCredentialCreate(BaseModel):
+    provider: str = Field(..., min_length=1, max_length=64)
+    name: str = Field(..., min_length=1, max_length=128)
+    api_key: str = Field(..., min_length=1)
+
+
+class AdminCredentialUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=128)
+    api_key: Optional[str] = Field(None, min_length=1)
+    disabled: Optional[bool] = None
 
 
 def validate_base_url(base_url: Optional[str]) -> Optional[str]:
@@ -244,7 +288,7 @@ async def health_check() -> HealthResponse:
 
 
 @app.get("/v1/models")
-async def list_models() -> ModelList:
+async def list_models(_: bool = Depends(verify_app_key)) -> ModelList:
     """List available models (OpenAI-compatible) including registry models"""
     all_models = list(AVAILABLE_MODELS)
     
@@ -277,11 +321,24 @@ async def admin_create_model(
         if validated is None:
             raise HTTPException(status_code=400, detail="Invalid or blocked base_url")
     
+    if model.credential_id and model.credential_ref:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot specify both credential_id and credential_ref"
+        )
+    
     if model.credential_ref and model.credential_ref not in ALLOWED_CREDENTIAL_REFS:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid credential_ref. Allowed: {', '.join(ALLOWED_CREDENTIAL_REFS)}"
         )
+    
+    if model.credential_id:
+        cred = creds_get(model.credential_id)
+        if not cred:
+            raise HTTPException(status_code=400, detail="Credential not found")
+        if cred.disabled:
+            raise HTTPException(status_code=400, detail="Credential is disabled")
     
     try:
         reg_model = RegistryModel(
@@ -291,6 +348,8 @@ async def admin_create_model(
             upstream_model=model.upstream_model,
             base_url=model.base_url,
             credential_ref=model.credential_ref,
+            credential_id=model.credential_id,
+            public=model.public,
             enabled=model.enabled,
         )
         created = registry_create_model(reg_model)
@@ -313,12 +372,26 @@ async def admin_update_model(
         if validated is None:
             raise HTTPException(status_code=400, detail="Invalid or blocked base_url")
     
+    if "credential_id" in update_dict and "credential_ref" in update_dict:
+        if update_dict["credential_id"] and update_dict["credential_ref"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot specify both credential_id and credential_ref"
+            )
+    
     if "credential_ref" in update_dict and update_dict["credential_ref"]:
         if update_dict["credential_ref"] not in ALLOWED_CREDENTIAL_REFS:
             raise HTTPException(
                 status_code=400,
                 detail=f"Invalid credential_ref. Allowed: {', '.join(ALLOWED_CREDENTIAL_REFS)}"
             )
+    
+    if "credential_id" in update_dict and update_dict["credential_id"]:
+        cred = creds_get(update_dict["credential_id"])
+        if not cred:
+            raise HTTPException(status_code=400, detail="Credential not found")
+        if cred.disabled:
+            raise HTTPException(status_code=400, detail="Credential is disabled")
     
     updated = registry_update_model(model_id, update_dict)
     if updated is None:
@@ -335,6 +408,97 @@ async def admin_delete_model(
     if registry_delete_model(model_id):
         return {"deleted": True, "id": model_id}
     raise HTTPException(status_code=404, detail="Model not found")
+
+
+@app.get("/admin/credentials")
+async def admin_list_credentials(_: bool = Depends(verify_admin_key)):
+    """List all credentials with masked API keys (admin only)"""
+    credentials = creds_list(masked=True)
+    return {"credentials": credentials}
+
+
+@app.post("/admin/credentials")
+async def admin_create_credential(
+    cred: AdminCredentialCreate,
+    _: bool = Depends(verify_admin_key),
+):
+    """Create a new credential (admin only)"""
+    if not is_encryption_configured():
+        raise HTTPException(
+            status_code=500,
+            detail="CREDENTIALS_ENC_KEY not configured"
+        )
+    
+    try:
+        cred_id = creds_create(
+            provider=cred.provider,
+            name=cred.name,
+            api_key=cred.api_key,
+        )
+        logger.info(f"Created credential: {cred_id} for provider: {cred.provider}")
+        return {"id": cred_id}
+    except Exception as e:
+        logger.error(f"Failed to create credential: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create credential")
+
+
+@app.put("/admin/credentials/{credential_id}")
+async def admin_update_credential(
+    credential_id: str,
+    updates: AdminCredentialUpdate,
+    _: bool = Depends(verify_admin_key),
+):
+    """Update an existing credential (admin only)"""
+    if not is_encryption_configured():
+        raise HTTPException(
+            status_code=500,
+            detail="CREDENTIALS_ENC_KEY not configured"
+        )
+    
+    cred = creds_get(credential_id)
+    if not cred:
+        raise HTTPException(status_code=404, detail="Credential not found")
+    
+    update_kwargs = {}
+    if updates.name is not None:
+        update_kwargs["name"] = updates.name
+    if updates.api_key is not None:
+        update_kwargs["api_key"] = updates.api_key
+    if updates.disabled is not None:
+        update_kwargs["disabled"] = updates.disabled
+    
+    if not update_kwargs:
+        raise HTTPException(status_code=400, detail="No updates provided")
+    
+    success = creds_update(credential_id, **update_kwargs)
+    if success:
+        logger.info(f"Updated credential: {credential_id}")
+        return {"updated": True, "id": credential_id}
+    raise HTTPException(status_code=500, detail="Failed to update credential")
+
+
+@app.delete("/admin/credentials/{credential_id}")
+async def admin_delete_credential(
+    credential_id: str,
+    hard: bool = False,
+    _: bool = Depends(verify_admin_key),
+):
+    """Delete a credential (admin only). Defaults to soft delete (disabled=true)."""
+    cred = creds_get(credential_id)
+    if not cred:
+        raise HTTPException(status_code=404, detail="Credential not found")
+    
+    if not hard:
+        models = registry_list_all()
+        refs = [m.id for m in models if m.credential_id == credential_id]
+        if refs:
+            logger.info(f"Soft-deleting credential {credential_id}, referenced by models: {refs}")
+    
+    success = creds_delete(credential_id, soft=not hard)
+    if success:
+        logger.info(f"{'Soft' if not hard else 'Hard'}-deleted credential: {credential_id}")
+        return {"deleted": True, "id": credential_id, "hard": hard}
+    raise HTTPException(status_code=500, detail="Failed to delete credential")
 
 
 def resolve_request_model(request):
@@ -356,7 +520,7 @@ def resolve_request_model(request):
 
 
 @app.post("/v1/chat/completions")
-async def chat_completions(request: ChatCompletionRequest):
+async def chat_completions(request: ChatCompletionRequest, _: bool = Depends(verify_app_key)):
     """Chat completions endpoint (OpenAI-compatible)"""
     
     query, context = extract_query_and_context(request.messages)
@@ -552,7 +716,18 @@ async def websocket_chat(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_json()
-            
+
+            settings = get_settings()
+            if settings.app_api_key:
+                app_api_key = (data.get("app_api_key") or "").strip()
+                if app_api_key != settings.app_api_key:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Invalid app key",
+                    })
+                    await websocket.close(code=1008)
+                    return
+
             query = data.get("query", "")
             context = data.get("context", "")
             max_rounds = data.get("max_rounds", 5)
@@ -662,7 +837,7 @@ async def websocket_chat(websocket: WebSocket):
 
 
 @app.post("/deepthink/invoke", response_model=DeepThinkInvokeResponse)
-async def deepthink_invoke(request: DeepThinkInvokeRequest) -> DeepThinkInvokeResponse:
+async def deepthink_invoke(request: DeepThinkInvokeRequest, _: bool = Depends(verify_app_key)) -> DeepThinkInvokeResponse:
     """Direct LangGraph invoke endpoint"""
     
     validated_base_url = validate_base_url(request.base_url)

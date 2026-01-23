@@ -23,13 +23,13 @@ const InputSection = ({ query, setQuery, onRun, onStop, appState, focusTrigger }
     if (textareaRef.current) {
       // Reset height to auto to allow shrinking when text is deleted
       textareaRef.current.style.height = 'auto';
-      
+
       const scrollHeight = textareaRef.current.scrollHeight;
       const maxHeight = 200;
 
       // Set new height based on scrollHeight, capped at 200px
       textareaRef.current.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
-      
+
       // Only show scrollbar if we hit the max height limit
       if (scrollHeight > maxHeight) {
         textareaRef.current.style.overflowY = 'auto';
@@ -53,7 +53,7 @@ const InputSection = ({ query, setQuery, onRun, onStop, appState, focusTrigger }
 
   const processFile = async (file: File) => {
     if (!file.type.startsWith('image/')) return;
-    
+
     try {
       const base64 = await fileToBase64(file);
       const newAttachment: MessageAttachment = {
@@ -118,17 +118,17 @@ const InputSection = ({ query, setQuery, onRun, onStop, appState, focusTrigger }
     <div className="w-full">
       {/* Attachments Preview */}
       {attachments.length > 0 && (
-        <div className="flex gap-2 mb-2 overflow-x-auto px-1 py-1">
+        <div className="flex gap-3 mb-3 overflow-x-auto px-1 py-1 custom-scrollbar">
           {attachments.map(att => (
-            <div key={att.id} className="relative group shrink-0">
-              <img 
-                src={att.url} 
-                alt="attachment" 
-                className="h-16 w-16 object-cover rounded-lg border border-slate-200 shadow-sm"
+            <div key={att.id} className="relative group shrink-0 animate-fade-in-up">
+              <img
+                src={att.url}
+                alt="attachment"
+                className="h-20 w-20 object-cover rounded-xl border border-white/20 shadow-lg"
               />
               <button
                 onClick={() => removeAttachment(att.id)}
-                className="absolute -top-1.5 -right-1.5 bg-slate-900 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                className="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all shadow-md hover:scale-110"
               >
                 <X size={12} />
               </button>
@@ -138,58 +138,62 @@ const InputSection = ({ query, setQuery, onRun, onStop, appState, focusTrigger }
       )}
 
       {/* Input Container */}
-      <div className="w-full flex items-end p-2 bg-white/70 backdrop-blur-xl border border-slate-200/50 rounded-[26px] shadow-2xl focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:bg-white/90 transition-colors duration-200">
-        
-        <input 
-          type="file" 
-          ref={fileInputRef}
-          className="hidden" 
-          accept="image/*" 
-          multiple
-          onChange={handleFileSelect}
-        />
+      <div className="relative w-full group">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-violet-500/10 rounded-[32px] blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-500" />
 
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="flex-shrink-0 p-2.5 mb-0.5 ml-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-          title="Attach Image"
-          disabled={isRunning}
-        >
-          <Paperclip size={20} />
-        </button>
+        <div className="relative flex items-end p-2 bg-white/80 dark:bg-black/40 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-[28px] shadow-2xl transition-colors duration-200">
 
-        <textarea
-          ref={textareaRef}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          onCompositionStart={() => setIsComposing(true)}
-          onCompositionEnd={() => setIsComposing(false)}
-          placeholder="Ask a complex question..."
-          rows={1}
-          autoFocus
-          className="flex-1 max-h-[200px] py-3 pl-2 pr-2 bg-transparent border-none focus:ring-0 resize-none outline-none text-slate-800 placeholder:text-slate-400 leading-relaxed custom-scrollbar text-base"
-          style={{ minHeight: '48px' }}
-        />
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept="image/*"
+            multiple
+            onChange={handleFileSelect}
+          />
 
-        <div className="flex-shrink-0 pb-0.5 pr-0.5">
-          {isRunning ? (
-            <button
-              onClick={onStop}
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-900 text-white hover:bg-slate-700 transition-colors shadow-md"
-            >
-              <Square size={14} className="fill-current" />
-            </button>
-          ) : (
-            <button
-              onClick={handleSubmit}
-              disabled={!query.trim() && attachments.length === 0}
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-600 text-white hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 transition-all shadow-md hover:scale-105 active:scale-95"
-            >
-              <ArrowUp size={20} />
-            </button>
-          )}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex-shrink-0 p-3 mb-0.5 ml-1 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+            title="Attach Image"
+            disabled={isRunning}
+          >
+            <Paperclip size={20} />
+          </button>
+
+          <textarea
+            ref={textareaRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            onCompositionStart={() => setIsComposing(true)}
+            onCompositionEnd={() => setIsComposing(false)}
+            placeholder="Ask anything complex..."
+            rows={1}
+            autoFocus
+            className="flex-1 max-h-[200px] py-3.5 px-3 bg-transparent border-none focus:ring-0 resize-none outline-none text-foreground placeholder:text-muted-foreground leading-relaxed custom-scrollbar text-base"
+            style={{ minHeight: '52px' }}
+          />
+
+          <div className="flex-shrink-0 pb-1 pr-1">
+            {isRunning ? (
+              <button
+                onClick={onStop}
+                className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-md hover:shadow-lg hover:scale-105"
+              >
+                <Square size={12} className="fill-current" />
+              </button>
+            ) : (
+              <button
+                onClick={handleSubmit}
+                disabled={!query.trim() && attachments.length === 0}
+                className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-primary to-violet-600 text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-primary/30 hover:scale-105 active:scale-95"
+              >
+                <ArrowUp size={20} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -1,0 +1,11 @@
+Looking in indexes: https://mirrors.aliyun.com/pypi/simple/
+Collecting cryptography
+  Downloading https://mirrors.aliyun.com/pypi/packages/7e/bf/80fbf45253ea585a1e492a6a17efcb93467701fa79e71550a430c5e60df0/cryptography-46.0.3-cp311-abi3-win_amd64.whl (3.5 MB)
+     ---------------------------------------- 3.5/3.5 MB 69.2 MB/s  0:00:00
+Collecting cffi>=2.0.0 (from cryptography)
+  Downloading https://mirrors.aliyun.com/pypi/packages/ae/8f/dc5531155e7070361eb1b7e4c1a9d896d0cb21c49f807a6c03fd63fc877e/cffi-2.0.0-cp311-cp311-win_amd64.whl (182 kB)
+Collecting pycparser (from cffi>=2.0.0->cryptography)
+  Downloading https://mirrors.aliyun.com/pypi/packages/0c/c3/44f3fbbfa403ea2a7c779186dc20772604442dde72947e7d01069cbe98e3/pycparser-3.0-py3-none-any.whl (48 kB)
+Installing collected packages: pycparser, cffi, cryptography
+
+Successfully installed cffi-2.0.0 cryptography-46.0.3 pycparser-3.0

@@ -12,6 +12,18 @@ export const DEFAULT_CONFIG: AppConfig = {
   synthesisLevel: 'high',
   enableProcessStream: true,
   customModels: [],
+
+  backendUrl: '',
+
+  appApiKey: '',
+  rememberAppApiKey: false,
+
+  enableCustomApi: false,
+  apiProvider: 'google',
+  customApiKey: '',
+  rememberCustomApiKey: false,
+  customBaseUrl: '',
+
   toolConfig: {
     enableWebSearch: false,
     webSearchProvider: 'auto',

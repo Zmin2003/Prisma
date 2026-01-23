@@ -2,6 +2,7 @@
 import React from 'react';
 import { Settings, X } from 'lucide-react';
 import { AppConfig, ModelOption } from './types';
+import ApiSection from './components/settings/ApiSection';
 import ModelSection from './components/settings/ModelSection';
 import ThinkingSection from './components/settings/ThinkingSection';
 import ConnectionTest from './components/settings/ConnectionTest';
@@ -42,8 +43,9 @@ const SettingsModal = ({
         
         {/* Body */}
         <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
-          <ModelSection config={config} setConfig={setConfig} />
+          <ApiSection config={config} setConfig={setConfig} />
           <ConnectionTest config={config} currentModel={model} />
+          <ModelSection config={config} setConfig={setConfig} />
           <SearchToolSection config={config} setConfig={setConfig} />
 
           <ThinkingSection
@@ -53,8 +55,6 @@ const SettingsModal = ({
           />
           
           <LogSection />
-
-
         </div>
 
         {/* Footer */}

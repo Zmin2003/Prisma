@@ -57,10 +57,17 @@ export type AppConfig = {
   enableProcessStream?: boolean;
   customModels?: CustomModel[];
   toolConfig?: ToolConfig;
+
+  backendUrl?: string;
+
+  appApiKey?: string;
+  rememberAppApiKey?: boolean;
+
   enableCustomApi?: boolean;
-  customApiKey?: string;
-  customBaseUrl?: string;
   apiProvider?: ApiProvider;
+  customApiKey?: string;
+  rememberCustomApiKey?: boolean;
+  customBaseUrl?: string;
 };
 
 export type MessageAttachment = {
