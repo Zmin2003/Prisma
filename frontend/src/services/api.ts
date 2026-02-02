@@ -2,6 +2,7 @@ import axios from 'axios';
 
 // 从环境变量读取后端地址，如果没有则使用默认值
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const API_PORT = import.meta.env.VITE_API_PORT || '3000';
 const API_BASE = API_BASE_URL ? `${API_BASE_URL}/api` : '/api';
 
 export const api = {
@@ -41,10 +42,10 @@ export const api = {
       return `${protocol}//${url.host}/ws/chat`;
     }
 
-    // 默认行为：根据当前页面地址推断
+    // 默认行为：根据当前页面地址推断，使用环境变量中的端口
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.hostname;
-    const port = window.location.port === '5173' ? '3001' : window.location.port;
+    const port = window.location.port === '5173' ? API_PORT : window.location.port;
     return `${protocol}//${host}:${port}/ws/chat`;
   },
 };
