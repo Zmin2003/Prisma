@@ -55,6 +55,13 @@
       </div>
 
       <div class="sidebar-footer">
+        <button class="theme-settings-btn" @click="showThemeSettings = true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+          <span>主题</span>
+        </button>
         <router-link to="/admin" class="admin-link">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3"/>
@@ -356,6 +363,8 @@
     <!-- Sidebar Overlay -->
     <div class="sidebar-overlay" :class="{ visible: sidebarOpen }" @click="sidebarOpen = false"></div>
 
+    <!-- Theme Settings Modal -->
+    <ThemeSettings v-if="showThemeSettings" @close="showThemeSettings = false" />
   </div>
 </template>
 
@@ -366,6 +375,7 @@ import { api } from '@/services/api';
 import { useWebSocket } from '@/composables/useWebSocket';
 import { EXPERT_COLORS, type Message, type ProcessStep } from '@/types/chat';
 import MarkdownIt from 'markdown-it';
+import ThemeSettings from '@/components/ThemeSettings.vue';
 
 const md = new MarkdownIt({
   html: false,
@@ -380,6 +390,7 @@ const sidebarOpen = ref(false);
 const userInput = ref('');
 const chatAreaRef = ref<HTMLElement | null>(null);
 const inputRef = ref<HTMLTextAreaElement | null>(null);
+const showThemeSettings = ref(false);
 
 const sessions = computed(() => chatStore.sortedSessions);
 const currentSessionId = computed(() => chatStore.currentSessionId);
@@ -851,6 +862,30 @@ onMounted(() => {
 .sidebar-footer {
   padding: 12px;
   border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.theme-settings-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%;
+  text-align: left;
+}
+
+.theme-settings-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 .admin-link {

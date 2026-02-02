@@ -33,6 +33,12 @@
   --transition-fast: 150ms ease;
   --transition-normal: 200ms ease;
   --transition-slow: 300ms ease;
+  /* 背景图片相关变量 */
+  --bg-image-enabled: 0;
+  --bg-image-url: none;
+  --bg-image-opacity: 0.3;
+  --bg-image-blur: 10px;
+  --bg-image-brightness: 0.8;
 }
 
 /* ===== Reset & Base ===== */
