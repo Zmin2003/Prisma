@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container" :class="{ 'sidebar-active': sidebarOpen }">
     <!-- Sidebar -->
     <aside class="sidebar" :class="{ 'sidebar-open': sidebarOpen }">
       <div class="sidebar-header">
@@ -338,6 +338,7 @@
             v-model="userInput"
             @keydown="handleKeydown"
             @input="autoResize"
+            @focus="scrollToBottom"
             placeholder="Ask anything..."
             :disabled="isLoading"
             rows="1"
@@ -369,7 +370,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, watch, onMounted } from 'vue';
+import { ref, computed, nextTick, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useChatStore } from '@/stores/chatStore';
 import { api } from '@/services/api';
 import { useWebSocket } from '@/composables/useWebSocket';
@@ -391,6 +392,7 @@ const userInput = ref('');
 const chatAreaRef = ref<HTMLElement | null>(null);
 const inputRef = ref<HTMLTextAreaElement | null>(null);
 const showThemeSettings = ref(false);
+const isMobile = ref(window.matchMedia('(max-width: 768px)').matches);
 
 const sessions = computed(() => chatStore.sortedSessions);
 const currentSessionId = computed(() => chatStore.currentSessionId);
@@ -482,6 +484,13 @@ function toggleReferences(msg: Message) {
   msg._showReferences = !msg._showReferences;
 }
 
+function handleViewportChange() {
+  isMobile.value = window.matchMedia('(max-width: 768px)').matches;
+  if (!sidebarOpen.value) {
+    document.body.style.overflow = '';
+  }
+}
+
 function formatUrl(url: string): string {
   try {
     const urlObj = new URL(url);
@@ -545,7 +554,8 @@ function handleKeydown(e: KeyboardEvent) {
 function autoResize() {
   if (inputRef.value) {
     inputRef.value.style.height = 'auto';
-    inputRef.value.style.height = Math.min(inputRef.value.scrollHeight, 200) + 'px';
+    const maxHeight = Math.floor(window.innerHeight * 0.35);
+    inputRef.value.style.height = Math.min(inputRef.value.scrollHeight, maxHeight) + 'px';
   }
 }
 
@@ -640,6 +650,8 @@ function handleWebSocketMessage(data: any, startTime: number) {
       rounds: data.data?.rounds,
       duration,
       timestamp: Date.now(),
+      _showExperts: !isMobile.value,
+      _showReferences: !isMobile.value,
     };
 
     chatStore.addMessage(aiMessage);
@@ -676,6 +688,11 @@ function scrollToBottom() {
   nextTick(() => {
     if (chatAreaRef.value) {
       chatAreaRef.value.scrollTop = chatAreaRef.value.scrollHeight;
+      setTimeout(() => {
+        if (chatAreaRef.value) {
+          chatAreaRef.value.scrollTop = chatAreaRef.value.scrollHeight;
+        }
+      }, 80);
     }
   });
 }
@@ -684,18 +701,50 @@ watch(messages, () => {
   scrollToBottom();
 }, { deep: true });
 
+watch(sidebarOpen, (open) => {
+  if (!isMobile.value) {
+    document.body.style.overflow = '';
+    return;
+  }
+  document.body.style.overflow = open ? 'hidden' : '';
+});
+
 onMounted(() => {
   if (sessions.value.length === 0) {
     chatStore.createSession();
   }
+
+  if (isMobile.value) {
+    chatStore.currentMessages.forEach((msg) => {
+      if (msg.experts && msg._showExperts === undefined) {
+        msg._showExperts = false;
+      }
+      if (msg.searchResults && msg._showReferences === undefined) {
+        msg._showReferences = false;
+      }
+    });
+  }
+
+  window.addEventListener('resize', handleViewportChange, { passive: true });
+  window.addEventListener('orientationchange', handleViewportChange, { passive: true });
+  window.visualViewport?.addEventListener('resize', handleViewportChange, { passive: true });
+
   scrollToBottom();
+});
+
+onBeforeUnmount(() => {
+  document.body.style.overflow = '';
+  window.removeEventListener('resize', handleViewportChange);
+  window.removeEventListener('orientationchange', handleViewportChange);
+  window.visualViewport?.removeEventListener('resize', handleViewportChange);
 });
 </script>
 
 <style scoped>
 .app-container {
   display: flex;
-  height: 100vh;
+  height: var(--app-height);
+  min-height: -webkit-fill-available;
   overflow: hidden;
   background: var(--bg-primary);
 }
@@ -1008,8 +1057,11 @@ onMounted(() => {
 /* Chat Area */
 .chat-area {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 24px;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .empty-state {
@@ -1638,7 +1690,7 @@ onMounted(() => {
 
 /* Input Area */
 .input-area {
-  padding: 16px 24px 24px;
+  padding: 16px 24px calc(16px + var(--safe-bottom));
   border-top: 1px solid var(--border);
   background: var(--bg-primary);
 }
@@ -1663,7 +1715,8 @@ onMounted(() => {
 .input-container textarea {
   flex: 1;
   min-height: 24px;
-  max-height: 200px;
+  max-height: min(260px, 35vh);
+  overflow-y: auto;
   padding: 0;
   background: none;
   border: none;
@@ -1742,6 +1795,7 @@ onMounted(() => {
     top: 0;
     z-index: 50;
     transform: translateX(-100%);
+    width: min(84vw, 320px);
   }
 
   .sidebar.sidebar-open {
@@ -1754,6 +1808,8 @@ onMounted(() => {
 
   .menu-btn {
     display: block;
+    min-width: 44px;
+    min-height: 44px;
   }
 
   .sidebar-overlay {
@@ -1765,44 +1821,109 @@ onMounted(() => {
     opacity: 0;
   }
 
+  .header {
+    height: 52px;
+    padding: 0 12px;
+  }
+
+  .header-title {
+    font-size: 15px;
+  }
+
   .header-title span {
     display: none;
+  }
+
+  .chat-area {
+    padding: 12px;
+  }
+
+  .messages-container {
+    max-width: 100%;
+  }
+
+  .message {
+    margin-bottom: 16px;
+  }
+
+  .user-bubble .message-content {
+    max-width: 84%;
+    font-size: 14px;
+  }
+
+  .assistant-bubble .avatar {
+    width: 28px;
+    height: 28px;
   }
 
   .features {
     flex-direction: column;
   }
 
-  .experts-grid {
+  .process-flow {
+    padding: 12px;
+  }
+
+  .process-steps {
+    display: none;
+  }
+
+  .experts-grid,
+  .live-experts-grid {
     grid-template-columns: 1fr;
   }
 
-  .live-experts-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .input-area {
+    padding: 10px 12px calc(10px + var(--safe-bottom));
   }
 
-  /* 移动端触摸优化 */
-  button, .expert-card, .live-expert-card, .reference-item {
+  .input-container {
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .input-container textarea {
+    font-size: 16px;
+    line-height: 1.4;
+  }
+
+  .send-btn,
+  .new-chat-btn,
+  .theme-settings-btn,
+  .admin-link,
+  .session-item,
+  .delete-session,
+  .experts-toggle,
+  .references-toggle,
+  .reference-item,
+  .expert-card,
+  .live-expert-card {
+    min-height: 44px;
+    min-width: 44px;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
   }
 
-  /* 确保按钮可点击 */
-  .send-btn, .menu-btn, .new-chat-btn, .settings-btn {
-    min-height: 44px;
-    min-width: 44px;
+  .delete-session {
+    opacity: 1;
   }
 
-  /* 输入框优化 */
-  .input-container {
-    position: relative;
-    z-index: 1;
+  .disclaimer {
+    font-size: 10px;
+    margin-top: 8px;
   }
 
-  /* 防止侧边栏遮挡 */
   .main-content {
     position: relative;
     z-index: 1;
+  }
+
+  .app-container.sidebar-active .chat-area,
+  .app-container.sidebar-active .input-area {
+    pointer-events: none;
   }
 }
 

@@ -39,6 +39,8 @@
   --bg-image-opacity: 0.3;
   --bg-image-blur: 10px;
   --bg-image-brightness: 0.8;
+  --app-height: 100dvh;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* ===== Reset & Base ===== */
@@ -49,7 +51,8 @@
 }
 
 html, body {
-  height: 100%;
+  height: var(--app-height);
+  min-height: -webkit-fill-available;
   overflow: hidden;
 }
 
@@ -69,7 +72,8 @@ body {
 
 #app {
   width: 100%;
-  height: 100vh;
+  height: var(--app-height);
+  min-height: -webkit-fill-available;
   overflow: hidden;
   /* 确保可以触摸 */
   position: relative;

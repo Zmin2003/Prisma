@@ -4,6 +4,16 @@ import router from './router';
 import App from './App.vue';
 import './style.css';
 
+function updateAppHeight() {
+  const height = window.visualViewport?.height ?? window.innerHeight;
+  document.documentElement.style.setProperty('--app-height', `${Math.round(height)}px`);
+}
+
+updateAppHeight();
+window.addEventListener('resize', updateAppHeight, { passive: true });
+window.addEventListener('orientationchange', updateAppHeight, { passive: true });
+window.visualViewport?.addEventListener('resize', updateAppHeight, { passive: true });
+
 const app = createApp(App);
 const pinia = createPinia();
 
