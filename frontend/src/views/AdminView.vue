@@ -320,6 +320,7 @@
               保存账号
             </button>
             <span v-if="saveMessage" class="success-message">{{ saveMessage }}</span>
+            <span v-if="saveError" class="error-message inline-error">{{ saveError }}</span>
           </div>
         </section>
 
@@ -340,6 +341,7 @@ const password = ref('');
 const loginError = ref('');
 const activeTab = ref('llm');
 const saveMessage = ref('');
+const saveError = ref('');
 
 const tabs = [
   { id: 'llm', label: 'LLM 配置', icon: { render: () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }, [h('path', { d: 'M12 2a10 10 0 0110 10 10 10 0 01-10 10A10 10 0 012 12 10 10 0 0112 2z' }), h('path', { d: 'M12 6v6l4 2' })]) } },
@@ -453,18 +455,37 @@ async function saveSearchConfig() {
 
 async function saveAccount() {
   try {
+    saveError.value = '';
+
+    const trimmedUsername = accountForm.value.username.trim();
+    const trimmedPassword = accountForm.value.newPassword.trim();
+
+    if (!trimmedUsername) {
+      saveError.value = '用户名不能为空';
+      return;
+    }
+
+    if (trimmedPassword && trimmedPassword.length < 6) {
+      saveError.value = '新密码至少 6 位';
+      return;
+    }
+
     await adminStore.updateAccount(
-      accountForm.value.username,
-      accountForm.value.newPassword || undefined
+      trimmedUsername,
+      trimmedPassword || undefined
     );
+
+    accountForm.value.username = trimmedUsername;
     accountForm.value.newPassword = '';
     showSaveMessage('账号更新成功，系统已保持为单管理员模式');
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to update account:', error);
+    saveError.value = error?.response?.data?.error || '保存失败，请稍后重试';
   }
 }
 
 function showSaveMessage(message = '保存成功！') {
+  saveError.value = '';
   saveMessage.value = message;
   setTimeout(() => (saveMessage.value = ''), 3000);
 }
