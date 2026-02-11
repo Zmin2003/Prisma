@@ -30,7 +30,7 @@
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5">
             <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
           </svg>
-          <p>No conversations yet</p>
+          <p>还没有会话</p>
         </div>
         <div
           v-for="session in sessions"
@@ -46,7 +46,7 @@
             <span class="session-title">{{ session.title }}</span>
             <span class="session-date">{{ formatDate(session.updatedAt) }}</span>
           </div>
-          <button class="delete-session" @click.stop="deleteSession(session.id)" title="Delete">
+          <button class="delete-session" @click.stop="confirmDeleteSession(session.id)" title="删除会话">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
             </svg>
@@ -236,7 +236,7 @@
                       </svg>
                       {{ formatDuration(msg.duration) }}
                     </span>
-                    <span v-if="msg.rounds" class="footer-item">{{ msg.rounds }} rounds</span>
+                    <span v-if="msg.rounds" class="footer-item">{{ msg.rounds }} 轮</span>
                   </div>
                 </div>
               </div>
@@ -339,7 +339,7 @@
             @keydown="handleKeydown"
             @input="autoResize"
             @focus="scrollToBottom"
-            placeholder="Ask anything..."
+            placeholder="输入你的问题..."
             :disabled="isLoading"
             rows="1"
           ></textarea>
@@ -357,7 +357,7 @@
             </svg>
           </button>
         </div>
-        <p class="disclaimer">DeepThink may produce inaccurate information. Verify important facts.</p>
+        <p class="disclaimer">DeepThink 可能会生成不准确内容，请核实关键信息。</p>
       </div>
     </main>
 
@@ -366,6 +366,18 @@
 
     <!-- Theme Settings Modal -->
     <ThemeSettings v-if="showThemeSettings" @close="showThemeSettings = false" />
+
+    <!-- Delete Confirm Modal -->
+    <div v-if="showDeleteConfirm" class="confirm-overlay" @click="cancelDeleteSession">
+      <div class="confirm-modal" @click.stop>
+        <h3>删除会话？</h3>
+        <p>删除后将无法恢复。</p>
+        <div class="confirm-actions">
+          <button class="confirm-btn secondary" @click="cancelDeleteSession">取消</button>
+          <button class="confirm-btn danger" @click="deleteSession">确认删除</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -393,6 +405,8 @@ const chatAreaRef = ref<HTMLElement | null>(null);
 const inputRef = ref<HTMLTextAreaElement | null>(null);
 const showThemeSettings = ref(false);
 const isMobile = ref(window.matchMedia('(max-width: 768px)').matches);
+const showDeleteConfirm = ref(false);
+const pendingDeleteSessionId = ref<string | null>(null);
 
 const sessions = computed(() => chatStore.sortedSessions);
 const currentSessionId = computed(() => chatStore.currentSessionId);
@@ -538,10 +552,21 @@ function selectSession(sessionId: string) {
   sidebarOpen.value = false;
 }
 
-function deleteSession(sessionId: string) {
-  if (confirm('Delete this conversation?')) {
-    chatStore.deleteSession(sessionId);
-  }
+function confirmDeleteSession(sessionId: string) {
+  pendingDeleteSessionId.value = sessionId;
+  showDeleteConfirm.value = true;
+}
+
+function cancelDeleteSession() {
+  showDeleteConfirm.value = false;
+  pendingDeleteSessionId.value = null;
+}
+
+function deleteSession() {
+  if (!pendingDeleteSessionId.value) return;
+  chatStore.deleteSession(pendingDeleteSessionId.value);
+  showDeleteConfirm.value = false;
+  pendingDeleteSessionId.value = null;
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -1925,6 +1950,68 @@ onBeforeUnmount(() => {
   .app-container.sidebar-active .input-area {
     pointer-events: none;
   }
+}
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 70;
+  padding: 16px;
+}
+
+.confirm-modal {
+  width: min(92vw, 360px);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 16px;
+}
+
+.confirm-modal h3 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.confirm-modal p {
+  margin: 10px 0 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.confirm-btn {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  cursor: pointer;
+  min-height: 40px;
+}
+
+.confirm-btn.secondary:hover {
+  background: var(--bg-hover);
+}
+
+.confirm-btn.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.confirm-btn.danger:hover {
+  filter: brightness(1.05);
 }
 
 </style>
